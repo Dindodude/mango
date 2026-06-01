@@ -1,0 +1,88 @@
+# Mango Preorder Management System
+
+Full-stack Next.js preorder system for seasonal mango batches. Customers do not need accounts. Admins use Supabase Auth and the `admin_users` table.
+
+## Features
+
+- Public landing, preorder, cart, checkout, and success pages
+- E-transfer confirmation flow with simple customer language
+- Supabase-backed orders, order items, batches, products, admin users, reports
+- Database RPC for checkout so totals, costs, profits, and order numbers are generated server-side
+- Per-batch order numbers like `JUN-W1-2026-001`
+- Admin dashboard, product management, batch management, order management, detail view, reports, CSV exports
+- RLS enabled on every table
+- No inventory tracking, no stock limits, no stock deductions
+
+## Local Setup
+
+1. Install dependencies:
+
+```bash
+npm install
+```
+
+2. Create `.env.local` from `.env.example`:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+```
+
+3. In Supabase SQL Editor, run:
+
+```text
+supabase/schema.sql
+supabase/seed.sql
+```
+
+4. Create an admin user in Supabase Auth, then approve that user:
+
+```sql
+insert into public.admin_users (user_id, email, role, active)
+values ('AUTH_USER_UUID_HERE', 'admin@example.com', 'owner', true);
+```
+
+5. Start the app:
+
+```bash
+npm run dev
+```
+
+Open `http://localhost:3000`.
+
+## Supabase Notes
+
+- RLS is enabled for `batches`, `products`, `orders`, `order_items`, `admin_users`, and `reports`.
+- Public users can read active batch/product information.
+- Public checkout uses `create_public_preorder(...)`, a security-definer database function.
+- Public users cannot read orders, cost, profit, admin notes, or dashboard data.
+- Admin access requires both Supabase Auth login and an active row in `admin_users`.
+- Only one batch can be active because of a partial unique index.
+
+## Storage
+
+Product images can use Supabase Storage public URLs or any external image URL allowed in `next.config.mjs`. Create a public bucket such as `product-images` if you want admins to upload images manually through Supabase.
+
+## Deployment to Vercel
+
+1. Push this project to GitHub.
+2. Import the repository in Vercel.
+3. Add the same environment variables from `.env.example`.
+4. Deploy.
+5. Confirm Supabase Auth redirect URLs include:
+
+```text
+https://your-vercel-domain.vercel.app/**
+http://localhost:3000/**
+```
+
+## Customer Flow
+
+1. Customer selects items and quantities.
+2. Customer reviews cart.
+3. Customer sends e-transfer to `idreesrah0@gmail.com`.
+4. Customer confirms payment and submits preorder.
+5. Order is saved with payment status `Payment Claimed by Customer`.
+6. Admin verifies payment and updates order status.

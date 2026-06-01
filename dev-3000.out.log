@@ -1,0 +1,36 @@
+  ▲ Next.js 14.2.35
+  - Local:        http://localhost:3000
+
+ ✓ Starting...
+ ✓ Ready in 2.9s
+ ○ Compiling /middleware ...
+ ✓ Compiled /middleware in 848ms (126 modules)
+ ○ Compiling /preorder ...
+ ✓ Compiled /preorder in 2.7s (622 modules)
+ GET /preorder 200 in 2892ms
+ GET /preorder 200 in 179ms
+ GET /preorder 200 in 49ms
+ GET /preorder 200 in 22ms
+ ✓ Compiled / in 328ms (623 modules)
+ GET / 200 in 443ms
+ ✓ Compiled /cart in 201ms (628 modules)
+ GET /cart 200 in 311ms
+ ○ Compiling /checkout ...
+ ✓ Compiled /checkout in 685ms (770 modules)
+ GET /checkout 200 in 833ms
+ ✓ Compiled /admin/login in 224ms (782 modules)
+ GET /admin/login 200 in 334ms
+ GET /preorder 200 in 67ms
+ GET /preorder 200 in 35ms
+ ✓ Compiled in 755ms (796 modules)
+ GET /preorder 200 in 33ms
+ GET /preorder 200 in 25ms
+ ✓ Compiled /_not-found in 210ms (756 modules)
+ GET /_next/static/css/app/layout.css?v=1780344684143 404 in 354ms
+ GET /_next/static/chunks/webpack.js?v=1780344684143 404 in 324ms
+ GET /_next/static/chunks/main-app.js?v=1780344684143 404 in 323ms
+ GET /_next/static/chunks/app-pages-internals.js 404 in 323ms
+ GET /_next/static/chunks/app/error.js 404 in 321ms
+ GET /_next/static/chunks/app/layout.js 404 in 323ms
+ GET /_next/static/chunks/app/global-error.js 404 in 30ms
+ GET /_next/static/chunks/app/preorder/page.js 404 in 35ms
