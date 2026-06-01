@@ -1,0 +1,101 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100vh;
+  background:
+    linear-gradient(180deg, rgba(255, 249, 230, 0.74), rgba(255, 255, 255, 0) 360px),
+    #faf8f1;
+  color: #20261f;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.focus-ring {
+  @apply focus:outline-none focus:ring-2 focus:ring-leaf-500 focus:ring-offset-2 focus:ring-offset-mango-50;
+}
+
+@layer components {
+  .shell {
+    @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
+  }
+
+  .admin-shell {
+    @apply mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8;
+  }
+
+  .surface {
+    @apply rounded-lg border border-stone-200/80 bg-white shadow-crisp;
+  }
+
+  .surface-muted {
+    @apply rounded-lg border border-mango-100 bg-mango-50/70 shadow-crisp;
+  }
+
+  .btn-primary {
+    @apply focus-ring inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-leaf-700 px-4 py-2.5 text-sm font-bold text-white shadow-crisp transition hover:bg-leaf-900 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .btn-secondary {
+    @apply focus-ring inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-stone-200 bg-white px-4 py-2.5 text-sm font-bold text-stone-900 shadow-crisp transition hover:border-leaf-100 hover:bg-leaf-50;
+  }
+
+  .btn-accent {
+    @apply focus-ring inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-mango-500 px-4 py-2.5 text-sm font-black text-stone-950 shadow-crisp transition hover:bg-mango-300 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .field {
+    @apply focus-ring w-full rounded-md border border-stone-200 bg-white px-3 py-2.5 text-sm text-stone-900 shadow-crisp placeholder:text-stone-400;
+  }
+
+  .label {
+    @apply text-xs font-bold uppercase tracking-wide text-stone-500;
+  }
+
+  .eyebrow {
+    @apply text-xs font-black uppercase tracking-[0.18em] text-leaf-700;
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-md border border-stone-200 bg-white px-2.5 py-1 text-xs font-bold text-stone-700 shadow-crisp;
+  }
+
+  .badge-warm {
+    @apply inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-800;
+  }
+
+  .badge-good {
+    @apply inline-flex items-center gap-1 rounded-md border border-leaf-100 bg-leaf-50 px-2.5 py-1 text-xs font-bold text-leaf-700;
+  }
+
+  .table-shell {
+    @apply overflow-x-auto rounded-lg border border-stone-200 bg-white shadow-crisp;
+  }
+
+  .data-table {
+    @apply w-full text-left text-sm;
+  }
+
+  .data-table th {
+    @apply whitespace-nowrap bg-stone-50 px-4 py-3 text-xs font-black uppercase tracking-wide text-stone-500;
+  }
+
+  .data-table td {
+    @apply border-t border-stone-100 px-4 py-3 align-top text-stone-700;
+  }
+}
