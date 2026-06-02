@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { CheckCircle2, MapPin } from "lucide-react";
 import { CopyButton } from "@/components/copy-button";
+import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { ETRANSFER_EMAIL, PICKUP_ADDRESS } from "@/lib/constants";
 import { hasSupabaseAdminConfig } from "@/lib/env";
@@ -67,6 +68,7 @@ export default async function SuccessPage({ searchParams }: { searchParams: { or
           </Link>
         </div>
       </div>
+      <SiteFooter />
     </main>
   );
 }

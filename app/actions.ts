@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth";
+import { clearDirectAdminSession, createDirectAdminSession, verifyDirectAdminCredentials } from "@/lib/admin-session";
 import { hasSupabaseConfig } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -80,28 +81,18 @@ export async function submitPreorder(_: ActionState, formData: FormData): Promis
 }
 
 export async function loginAdmin(_: ActionState, formData: FormData): Promise<ActionState> {
-  if (!hasSupabaseConfig()) {
-    return { ok: false, message: "Supabase is not configured yet. Please add .env.local first." };
-  }
-
-  const email = String(formData.get("email") ?? "");
+  const email = cleanText(formData.get("email"), 160).toLowerCase();
   const password = String(formData.get("password") ?? "");
-  const supabase = createClient();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) return { ok: false, message: "Login failed. Check your email and password." };
 
-  const { data } = await supabase.from("admin_users").select("active").eq("email", email).eq("active", true).maybeSingle();
-  if (!data) {
-    await supabase.auth.signOut();
-    return { ok: false, message: "This account is not approved for admin access." };
-  }
+  const verified = verifyDirectAdminCredentials(email, password);
+  if (!verified.ok) return verified;
 
+  createDirectAdminSession(email);
   redirect("/admin");
 }
 
 export async function logoutAdmin() {
-  const supabase = createClient();
-  await supabase.auth.signOut();
+  clearDirectAdminSession();
   redirect("/admin/login");
 }
 

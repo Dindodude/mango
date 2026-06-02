@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Leaf, MessageCircle, ShoppingBasket } from "lucide-react";
+import { CONTACT_PHONE_DIGITS, CONTACT_PHONE_E164 } from "@/lib/constants";
 
 export function SiteHeader() {
   return (
@@ -20,12 +21,15 @@ export function SiteHeader() {
             <ShoppingBasket className="h-5 w-5" />
           </Link>
           <a
-            href="https://wa.me/"
+            href={`https://wa.me/${CONTACT_PHONE_DIGITS}`}
             className="btn-primary min-h-10 px-3 py-2"
           >
             <span className="flex items-center gap-2">
               <MessageCircle className="h-4 w-4" /> Text
             </span>
+          </a>
+          <a href={`sms:${CONTACT_PHONE_E164}`} className="sr-only">
+            Send text
           </a>
         </nav>
       </div>

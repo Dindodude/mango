@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { CalendarDays, Clock, MapPin, MessageCircle, ShieldCheck, ShoppingBasket, Truck } from "lucide-react";
+import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { hasSupabaseConfig } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
-import { ETRANSFER_EMAIL, PICKUP_ADDRESS } from "@/lib/constants";
+import { CONTACT_PHONE_E164, ETRANSFER_EMAIL, PICKUP_ADDRESS } from "@/lib/constants";
 
 export default async function HomePage() {
   const activeBatch = hasSupabaseConfig()
@@ -45,7 +46,7 @@ export default async function HomePage() {
                 <ShoppingBasket className="h-4 w-4" />
                 Start preorder
               </Link>
-              <a href="sms:" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-white/25 bg-white/10 px-4 py-2.5 text-sm font-bold text-white backdrop-blur transition hover:bg-white/20">
+              <a href={`sms:${CONTACT_PHONE_E164}`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-white/25 bg-white/10 px-4 py-2.5 text-sm font-bold text-white backdrop-blur transition hover:bg-white/20">
                 <MessageCircle className="h-4 w-4" />
                 Text us
               </a>
@@ -140,6 +141,7 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
+      <SiteFooter />
     </main>
   );
 }

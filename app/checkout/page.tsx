@@ -1,5 +1,6 @@
 import { CartView } from "@/components/cart-view";
 import { CheckoutForm } from "@/components/checkout-form";
+import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 
 export default function CheckoutPage() {
@@ -16,6 +17,7 @@ export default function CheckoutPage() {
           <CheckoutForm />
         </section>
       </div>
+      <SiteFooter />
     </main>
   );
 }

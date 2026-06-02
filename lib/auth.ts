@@ -1,25 +1,8 @@
 import { redirect } from "next/navigation";
-import { hasSupabaseConfig } from "@/lib/env";
-import { createClient } from "@/lib/supabase/server";
+import { getDirectAdminUser } from "@/lib/admin-session";
 
 export async function getAdminUser() {
-  if (!hasSupabaseConfig()) return null;
-
-  const supabase = createClient();
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
-
-  if (!user?.id) return null;
-
-  const { data } = await supabase
-    .from("admin_users")
-    .select("id,user_id,email,role,active")
-    .eq("user_id", user.id)
-    .eq("active", true)
-    .maybeSingle();
-
-  return data;
+  return getDirectAdminUser();
 }
 
 export async function requireAdmin() {

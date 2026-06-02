@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { CalendarDays, ShoppingBag } from "lucide-react";
 import { AddToCart } from "@/components/add-to-cart";
+import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { CONTACT_PHONE_E164 } from "@/lib/constants";
 import { hasSupabaseConfig } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 import { money } from "@/lib/utils";
@@ -48,7 +50,7 @@ export default async function PreorderPage() {
               <span className="badge-warm">Closed</span>
               <h2 className="mt-4 text-2xl font-black text-stone-950">No preorder is active right now.</h2>
               <p className="mt-2 leading-7 text-stone-600">Please check back later or text us for the next seasonal batch.</p>
-              <a href="sms:" className="btn-secondary mt-5">Text us</a>
+              <a href={`sms:${CONTACT_PHONE_E164}`} className="btn-secondary mt-5">Text us</a>
             </div>
           </div>
         ) : (
@@ -76,6 +78,7 @@ export default async function PreorderPage() {
           </div>
         )}
       </div>
+      <SiteFooter />
     </main>
   );
 }
