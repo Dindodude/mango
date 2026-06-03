@@ -26,10 +26,10 @@ next.config.mjs
 
 Wrong GitHub root example:
 
-build-a-full-stack-mango-preorder-v8-no-product-images/app/
+build-a-full-stack-mango-preorder-v9-supabase-url-fix/app/
 package.json
 
 Wrong GitHub root example:
 
-build-a-full-stack-mango-preorder-v8-no-product-images.zip
+build-a-full-stack-mango-preorder-v9-supabase-url-fix.zip
 package.json

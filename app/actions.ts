@@ -38,6 +38,13 @@ const batchSchema = z.object({
 export type ActionState = { ok: boolean; message: string; orderId?: string; orderNumber?: string };
 export type AdminActionState = { ok: boolean; message: string };
 
+function adminErrorMessage(message: string) {
+  if (message.toLowerCase().includes("invalid path")) {
+    return "Supabase URL should look like https://your-project.supabase.co. Remove anything after .co in Vercel, then redeploy.";
+  }
+  return message;
+}
+
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -181,7 +188,7 @@ export async function saveProduct(_: AdminActionState, formData: FormData): Prom
     const supabase = createAdminClient();
     const payload = { ...parsed.data, image_url: null };
     const { error } = id ? await supabase.from("products").update(payload).eq("id", id) : await supabase.from("products").insert(payload);
-    if (error) return { ok: false, message: error.message };
+    if (error) return { ok: false, message: adminErrorMessage(error.message) };
 
     revalidatePath("/admin/products");
     return { ok: true, message: "Product saved." };
@@ -224,7 +231,7 @@ export async function saveBatch(_: AdminActionState, formData: FormData): Promis
     const supabase = createAdminClient();
     const { error } = id ? await supabase.from("batches").update(payload).eq("id", id) : await supabase.from("batches").insert(payload);
     if (error?.code === "23505") return { ok: false, message: "A batch with this date already exists, or another batch is already Active." };
-    if (error) return { ok: false, message: error.message };
+    if (error) return { ok: false, message: adminErrorMessage(error.message) };
 
     revalidatePath("/admin/batches");
     revalidatePath("/");

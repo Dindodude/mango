@@ -35,6 +35,8 @@ ADMIN_SESSION_SECRET=use-a-long-random-secret
 ADMIN_ROLE=owner
 ```
 
+Use the base Supabase project URL only, for example `https://abcxyz.supabase.co`. Do not paste a REST endpoint like `/rest/v1`.
+
 3. In Supabase SQL Editor, run:
 
 ```text
