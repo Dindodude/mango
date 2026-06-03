@@ -26,7 +26,6 @@ const productSchema = z.object({
   category: z.string().min(2).max(60),
   selling_price: z.coerce.number().min(0),
   cost_price: z.coerce.number().min(0),
-  image_url: z.string().url().optional().or(z.literal("")),
   active: z.coerce.boolean().default(false)
 });
 
@@ -173,15 +172,14 @@ export async function saveProduct(_: AdminActionState, formData: FormData): Prom
       category: formData.get("category"),
       selling_price: formData.get("selling_price"),
       cost_price: formData.get("cost_price"),
-      image_url: cleanText(formData.get("image_url"), 400),
       active: formData.get("active") === "on"
     });
 
-    if (!parsed.success) return { ok: false, message: "Please check the product name, prices, and image URL." };
+    if (!parsed.success) return { ok: false, message: "Please check the product name and prices." };
 
     const id = String(formData.get("id") ?? "");
     const supabase = createAdminClient();
-    const payload = { ...parsed.data, image_url: parsed.data.image_url || null };
+    const payload = { ...parsed.data, image_url: null };
     const { error } = id ? await supabase.from("products").update(payload).eq("id", id) : await supabase.from("products").insert(payload);
     if (error) return { ok: false, message: error.message };
 

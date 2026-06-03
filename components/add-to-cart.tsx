@@ -5,7 +5,7 @@ import { Plus, Minus, ShoppingCart } from "lucide-react";
 import { useCart } from "@/components/cart-provider";
 
 type Props = {
-  product: { id: string; name: string; selling_price: number; image_url: string | null };
+  product: { id: string; name: string; selling_price: number };
 };
 
 export function AddToCart({ product }: Props) {
@@ -27,10 +27,7 @@ export function AddToCart({ product }: Props) {
       <button
         className="btn-primary flex-1"
         onClick={() => {
-          cart.add(
-            { productId: product.id, name: product.name, price: product.selling_price, imageUrl: product.image_url },
-            quantity
-          );
+          cart.add({ productId: product.id, name: product.name, price: product.selling_price }, quantity);
           setAdded(true);
           setTimeout(() => setAdded(false), 1300);
         }}

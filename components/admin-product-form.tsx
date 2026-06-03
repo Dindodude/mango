@@ -22,7 +22,6 @@ export function AdminProductForm({ product }: { product?: any }) {
       </select>
       <input name="selling_price" type="number" step="0.01" defaultValue={product?.selling_price ?? ""} placeholder="Selling price" required className="field" />
       <input name="cost_price" type="number" step="0.01" defaultValue={product?.cost_price ?? ""} placeholder="Cost price" required className="field" />
-      <input name="image_url" defaultValue={product?.image_url ?? ""} placeholder="Image URL" className="field sm:col-span-2" />
       <textarea name="description" defaultValue={product?.description ?? ""} placeholder="Description" className="field sm:col-span-2" />
       <label className="flex items-center gap-2 rounded-md border border-stone-200 bg-stone-50 px-3 py-2 text-sm font-bold text-stone-700">
         <input type="checkbox" name="active" defaultChecked={product?.active ?? true} /> Active

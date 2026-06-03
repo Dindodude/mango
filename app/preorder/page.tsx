@@ -14,7 +14,7 @@ export default async function PreorderPage() {
     ? await supabase.from("batches").select("*").eq("status", "Active").maybeSingle()
     : { data: null };
   const { data: products } = batch && supabase
-    ? await supabase.from("products").select("id,name,description,category,selling_price,image_url").eq("active", true).order("display_order")
+    ? await supabase.from("products").select("id,name,description,category,selling_price").eq("active", true).order("display_order")
     : { data: [] };
 
   return (
@@ -57,11 +57,6 @@ export default async function PreorderPage() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {products?.map((product) => (
               <article key={product.id} className="group overflow-hidden rounded-lg border border-stone-200 bg-white shadow-crisp transition hover:-translate-y-0.5 hover:shadow-lift">
-                {product.image_url ? (
-                  <img src={product.image_url} alt={product.name} className="h-48 w-full object-cover transition duration-300 group-hover:scale-[1.03]" />
-                ) : (
-                  <div className="flex h-48 items-center justify-center bg-mango-50 text-5xl font-black text-mango-500">M</div>
-                )}
                 <div className="p-5">
                   <div className="flex items-start justify-between gap-3">
                     <div>

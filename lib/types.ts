@@ -16,7 +16,6 @@ export type Product = {
   category: string;
   selling_price: number;
   cost_price?: number;
-  image_url: string | null;
   active: boolean;
   display_order: number;
   created_at: string;
@@ -26,7 +25,6 @@ export type CartLine = {
   productId: string;
   name: string;
   price: number;
-  imageUrl?: string | null;
   quantity: number;
 };
 

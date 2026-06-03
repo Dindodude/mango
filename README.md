@@ -61,10 +61,6 @@ Open `http://localhost:3000`.
 - Admin pages require the direct admin session cookie. Admin database reads/writes use the Supabase service role key on the server only.
 - Only one batch can be active because of a partial unique index.
 
-## Storage
-
-Product images can use Supabase Storage public URLs or any external image URL allowed in `next.config.mjs`. Create a public bucket such as `product-images` if you want admins to upload images manually through Supabase.
-
 ## Deployment to Vercel
 
 1. Push this project to GitHub.
