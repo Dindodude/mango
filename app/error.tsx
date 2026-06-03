@@ -6,7 +6,7 @@ export default function ErrorPage({ reset }: { error: Error & { digest?: string 
       <div className="surface max-w-md p-6 text-center">
         <h1 className="text-2xl font-black text-stone-950">Something needs attention.</h1>
         <p className="mt-3 text-sm leading-6 text-stone-700">
-          Please check your Supabase environment variables and restart the dev server.
+          Something blocked this page. Please try again, or check the setup if it keeps happening.
         </p>
         <button onClick={reset} className="btn-primary mt-5">
           Try again

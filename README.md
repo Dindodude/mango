@@ -1,6 +1,6 @@
 # Mango Preorder Management System
 
-Full-stack Next.js preorder system for seasonal mango batches. Customers do not need accounts. Admins use Supabase Auth and the `admin_users` table.
+Full-stack Next.js preorder system for seasonal mango batches. Customers do not need accounts. Admins use a server-only email/password stored in environment variables.
 
 ## Features
 
@@ -10,6 +10,7 @@ Full-stack Next.js preorder system for seasonal mango batches. Customers do not 
 - Database RPC for checkout so totals, costs, profits, and order numbers are generated server-side
 - Per-batch order numbers like `JUN-W1-2026-001`
 - Admin dashboard, product management, batch management, order management, detail view, reports, CSV exports
+- Direct admin login using secure HTTP-only session cookies
 - RLS enabled on every table
 - No inventory tracking, no stock limits, no stock deductions
 
@@ -28,6 +29,10 @@ NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
+ADMIN_EMAIL=admin@example.com
+ADMIN_PASSWORD=choose-a-secure-password
+ADMIN_SESSION_SECRET=use-a-long-random-secret
+ADMIN_ROLE=owner
 ```
 
 3. In Supabase SQL Editor, run:
@@ -37,12 +42,7 @@ supabase/schema.sql
 supabase/seed.sql
 ```
 
-4. Create an admin user in Supabase Auth, then approve that user:
-
-```sql
-insert into public.admin_users (user_id, email, role, active)
-values ('AUTH_USER_UUID_HERE', 'admin@example.com', 'owner', true);
-```
+4. Admin login is controlled by `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ADMIN_SESSION_SECRET`, and `ADMIN_ROLE`. You do not need Supabase Auth for admin login in this version.
 
 5. Start the app:
 
@@ -58,7 +58,7 @@ Open `http://localhost:3000`.
 - Public users can read active batch/product information.
 - Public checkout uses `create_public_preorder(...)`, a security-definer database function.
 - Public users cannot read orders, cost, profit, admin notes, or dashboard data.
-- Admin access requires both Supabase Auth login and an active row in `admin_users`.
+- Admin pages require the direct admin session cookie. Admin database reads/writes use the Supabase service role key on the server only.
 - Only one batch can be active because of a partial unique index.
 
 ## Storage
@@ -71,12 +71,7 @@ Product images can use Supabase Storage public URLs or any external image URL al
 2. Import the repository in Vercel.
 3. Add the same environment variables from `.env.example`.
 4. Deploy.
-5. Confirm Supabase Auth redirect URLs include:
-
-```text
-https://your-vercel-domain.vercel.app/**
-http://localhost:3000/**
-```
+5. Open `/admin/login` and sign in with `ADMIN_EMAIL` and `ADMIN_PASSWORD`.
 
 ## Customer Flow
 

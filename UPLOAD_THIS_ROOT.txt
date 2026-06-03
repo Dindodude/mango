@@ -1,0 +1,35 @@
+UPLOAD THE CONTENTS OF THIS FOLDER TO THE GITHUB REPO ROOT.
+
+Vercel must see these paths at the top level of github.com/Dindodude/mango:
+
+app/page.tsx
+app/layout.tsx
+components/site-header.tsx
+lib/utils.ts
+package.json
+
+Do not upload only package.json.
+Do not upload this folder as a nested folder.
+Do not upload the zip file itself to GitHub.
+Extract/open this folder, select all contents inside it, then upload/commit them to the repository root.
+
+Correct GitHub root example:
+
+app/
+components/
+lib/
+supabase/
+package.json
+package-lock.json
+next.config.mjs
+...
+
+Wrong GitHub root example:
+
+build-a-full-stack-mango-preorder-v7-admin-form-fixes/app/
+package.json
+
+Wrong GitHub root example:
+
+build-a-full-stack-mango-preorder-v7-admin-form-fixes.zip
+package.json

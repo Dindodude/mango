@@ -27,20 +27,87 @@ const productSchema = z.object({
   selling_price: z.coerce.number().min(0),
   cost_price: z.coerce.number().min(0),
   image_url: z.string().url().optional().or(z.literal("")),
-  active: z.coerce.boolean().default(false),
-  display_order: z.coerce.number().int().min(0).default(0)
+  active: z.coerce.boolean().default(false)
 });
 
 const batchSchema = z.object({
-  batch_code: z.string().min(3).max(30).regex(/^[A-Z0-9-]+$/),
-  batch_name: z.string().min(3).max(120),
-  start_date: z.string().min(8),
-  cutoff_date: z.string().min(8),
-  expected_arrival_date: z.string().min(8),
+  arrival_date: z.string().min(4).max(80),
+  batch_name: z.string().max(120).optional(),
   status: z.enum(["Draft", "Active", "Closed", "Completed"])
 });
 
 export type ActionState = { ok: boolean; message: string; orderId?: string; orderNumber?: string };
+export type AdminActionState = { ok: boolean; message: string };
+
+function todayIso() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function toIsoDate(year: number, monthIndex: number, day: number) {
+  const date = new Date(Date.UTC(year, monthIndex, day));
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== monthIndex || date.getUTCDate() !== day) return null;
+  return date.toISOString().slice(0, 10);
+}
+
+function parseAdminDate(input: FormDataEntryValue | null) {
+  const raw = cleanText(input, 80).replace(/,/g, " ").replace(/\s+/g, " ").trim();
+  if (!raw) return null;
+
+  const iso = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(raw);
+  if (iso) return toIsoDate(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
+
+  const months: Record<string, number> = {
+    january: 0,
+    jan: 0,
+    february: 1,
+    feb: 1,
+    march: 2,
+    mar: 2,
+    april: 3,
+    apr: 3,
+    may: 4,
+    june: 5,
+    jun: 5,
+    july: 6,
+    jul: 6,
+    august: 7,
+    aug: 7,
+    september: 8,
+    sep: 8,
+    sept: 8,
+    october: 9,
+    oct: 9,
+    november: 10,
+    nov: 10,
+    december: 11,
+    dec: 11
+  };
+
+  const monthFirst = /^([a-z]+)\s+(\d{1,2})\s+(\d{4})$/i.exec(raw);
+  if (monthFirst) {
+    const month = months[monthFirst[1].toLowerCase()];
+    if (month !== undefined) return toIsoDate(Number(monthFirst[3]), month, Number(monthFirst[2]));
+  }
+
+  const dayFirst = /^(\d{1,2})\s+([a-z]+)\s+(\d{4})$/i.exec(raw);
+  if (dayFirst) {
+    const month = months[dayFirst[2].toLowerCase()];
+    if (month !== undefined) return toIsoDate(Number(dayFirst[3]), month, Number(dayFirst[1]));
+  }
+
+  return null;
+}
+
+function batchCodeFromDate(isoDate: string) {
+  const date = new Date(`${isoDate}T00:00:00.000Z`);
+  const month = date.toLocaleString("en-US", { month: "short", timeZone: "UTC" }).toUpperCase();
+  return `${month}-${date.getUTCDate()}-${date.getUTCFullYear()}`;
+}
+
+function batchNameFromDate(isoDate: string) {
+  const date = new Date(`${isoDate}T00:00:00.000Z`);
+  return `${date.toLocaleString("en-US", { month: "long", timeZone: "UTC" })} ${date.getUTCDate()} ${date.getUTCFullYear()} preorder`;
+}
 
 export async function submitPreorder(_: ActionState, formData: FormData): Promise<ActionState> {
   if (!hasSupabaseConfig()) {
@@ -96,25 +163,33 @@ export async function logoutAdmin() {
   redirect("/admin/login");
 }
 
-export async function saveProduct(formData: FormData) {
-  const admin = await requireAdmin();
-  if (admin.role === "staff") throw new Error("Not allowed");
-  const parsed = productSchema.parse({
-    name: cleanText(formData.get("name"), 120),
-    description: cleanText(formData.get("description"), 700),
-    category: formData.get("category"),
-    selling_price: formData.get("selling_price"),
-    cost_price: formData.get("cost_price"),
-    image_url: cleanText(formData.get("image_url"), 400),
-    active: formData.get("active") === "on",
-    display_order: formData.get("display_order") || 0
-  });
-  const id = String(formData.get("id") ?? "");
-  const supabase = createAdminClient();
-  const payload = { ...parsed, image_url: parsed.image_url || null };
-  if (id) await supabase.from("products").update(payload).eq("id", id);
-  else await supabase.from("products").insert(payload);
-  revalidatePath("/admin/products");
+export async function saveProduct(_: AdminActionState, formData: FormData): Promise<AdminActionState> {
+  try {
+    const admin = await requireAdmin();
+    if (admin.role === "staff") return { ok: false, message: "Staff accounts cannot manage products." };
+    const parsed = productSchema.safeParse({
+      name: cleanText(formData.get("name"), 120),
+      description: cleanText(formData.get("description"), 700),
+      category: formData.get("category"),
+      selling_price: formData.get("selling_price"),
+      cost_price: formData.get("cost_price"),
+      image_url: cleanText(formData.get("image_url"), 400),
+      active: formData.get("active") === "on"
+    });
+
+    if (!parsed.success) return { ok: false, message: "Please check the product name, prices, and image URL." };
+
+    const id = String(formData.get("id") ?? "");
+    const supabase = createAdminClient();
+    const payload = { ...parsed.data, image_url: parsed.data.image_url || null };
+    const { error } = id ? await supabase.from("products").update(payload).eq("id", id) : await supabase.from("products").insert(payload);
+    if (error) return { ok: false, message: error.message };
+
+    revalidatePath("/admin/products");
+    return { ok: true, message: "Product saved." };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : "Product could not be saved." };
+  }
 }
 
 export async function deleteProduct(formData: FormData) {
@@ -124,25 +199,41 @@ export async function deleteProduct(formData: FormData) {
   revalidatePath("/admin/products");
 }
 
-export async function saveBatch(formData: FormData) {
-  const admin = await requireAdmin();
-  if (admin.role === "staff") throw new Error("Not allowed");
-  const parsed = batchSchema.parse({
-    batch_code: cleanText(formData.get("batch_code"), 30).toUpperCase(),
-    batch_name: cleanText(formData.get("batch_name"), 120),
-    start_date: formData.get("start_date"),
-    cutoff_date: formData.get("cutoff_date"),
-    expected_arrival_date: formData.get("expected_arrival_date"),
-    status: formData.get("status")
-  });
-  const id = String(formData.get("id") ?? "");
-  const supabase = createAdminClient();
-  const { error } = id
-    ? await supabase.from("batches").update(parsed).eq("id", id)
-    : await supabase.from("batches").insert(parsed);
-  if (error) throw new Error(error.message);
-  revalidatePath("/admin/batches");
-  revalidatePath("/");
+export async function saveBatch(_: AdminActionState, formData: FormData): Promise<AdminActionState> {
+  try {
+    const admin = await requireAdmin();
+    if (admin.role === "staff") return { ok: false, message: "Staff accounts cannot manage batches." };
+    const parsed = batchSchema.safeParse({
+      arrival_date: cleanText(formData.get("arrival_date"), 80),
+      batch_name: cleanText(formData.get("batch_name"), 120),
+      status: formData.get("status")
+    });
+
+    if (!parsed.success) return { ok: false, message: "Please enter an arrival date like June 15 2026." };
+
+    const arrivalDate = parseAdminDate(formData.get("arrival_date"));
+    if (!arrivalDate) return { ok: false, message: "Please enter the date like June 15 2026." };
+
+    const id = String(formData.get("id") ?? "");
+    const payload = {
+      batch_code: batchCodeFromDate(arrivalDate),
+      batch_name: parsed.data.batch_name?.trim() || batchNameFromDate(arrivalDate),
+      start_date: String(formData.get("start_date") || todayIso()),
+      cutoff_date: arrivalDate,
+      expected_arrival_date: arrivalDate,
+      status: parsed.data.status
+    };
+    const supabase = createAdminClient();
+    const { error } = id ? await supabase.from("batches").update(payload).eq("id", id) : await supabase.from("batches").insert(payload);
+    if (error?.code === "23505") return { ok: false, message: "A batch with this date already exists, or another batch is already Active." };
+    if (error) return { ok: false, message: error.message };
+
+    revalidatePath("/admin/batches");
+    revalidatePath("/");
+    return { ok: true, message: "Batch saved." };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : "Batch could not be saved." };
+  }
 }
 
 export async function updateOrder(formData: FormData) {
