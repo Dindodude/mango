@@ -7,7 +7,7 @@ Full-stack Next.js preorder system for seasonal mango batches. Customers do not 
 - Public landing, preorder, cart, checkout, and success pages
 - E-transfer confirmation flow with simple customer language
 - Supabase-backed orders, order items, batches, products, admin users, reports
-- Database RPC for checkout so totals, costs, profits, and order numbers are generated server-side
+- Server-side checkout so totals, costs, profits, and order numbers are generated safely before saving to Supabase
 - Per-batch order numbers like `JUN-W1-2026-001`
 - Admin dashboard, product management, batch management, order management, detail view, reports, CSV exports
 - Direct admin login using secure HTTP-only session cookies
@@ -34,6 +34,8 @@ ADMIN_PASSWORD=choose-a-secure-password
 ADMIN_SESSION_SECRET=use-a-long-random-secret
 ADMIN_ROLE=owner
 ```
+
+Use the base Supabase project URL only, for example `https://abcxyz.supabase.co`. Do not paste a REST endpoint like `/rest/v1`.
 
 3. In Supabase SQL Editor, run:
 

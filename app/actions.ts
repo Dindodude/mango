@@ -5,9 +5,8 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth";
 import { clearDirectAdminSession, createDirectAdminSession, verifyDirectAdminCredentials } from "@/lib/admin-session";
-import { hasSupabaseConfig } from "@/lib/env";
+import { hasSupabaseAdminConfig } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
 import { cleanText } from "@/lib/utils";
 
 const checkoutSchema = z.object({
@@ -37,6 +36,13 @@ const batchSchema = z.object({
 
 export type ActionState = { ok: boolean; message: string; orderId?: string; orderNumber?: string };
 export type AdminActionState = { ok: boolean; message: string };
+
+function adminErrorMessage(message: string) {
+  if (message.toLowerCase().includes("invalid path")) {
+    return "Supabase URL should look like https://your-project.supabase.co. Remove anything after .co in Vercel, then redeploy.";
+  }
+  return message;
+}
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
@@ -109,8 +115,8 @@ function batchNameFromDate(isoDate: string) {
 }
 
 export async function submitPreorder(_: ActionState, formData: FormData): Promise<ActionState> {
-  if (!hasSupabaseConfig()) {
-    return { ok: false, message: "Supabase is not configured yet. Please add .env.local first." };
+  if (!hasSupabaseAdminConfig()) {
+    return { ok: false, message: "Supabase is not configured yet. Please check your Vercel environment variables." };
   }
 
   const rawItems = String(formData.get("items") ?? "[]");
@@ -131,19 +137,101 @@ export async function submitPreorder(_: ActionState, formData: FormData): Promis
 
   if (!parsed.success) return { ok: false, message: "Please complete all required fields." };
 
-  const supabase = createClient();
-  const { data, error } = await supabase.rpc("create_public_preorder", {
-    customer_name_input: parsed.data.customerName,
-    phone_input: parsed.data.phone,
-    notes_input: parsed.data.notes ?? "",
-    items_input: parsed.data.items
-  });
+  const supabase = createAdminClient();
+  const { data: activeBatch, error: batchError } = await supabase
+    .from("batches")
+    .select("id,batch_code")
+    .eq("status", "Active")
+    .maybeSingle();
 
-  if (error || !data?.[0]) {
-    return { ok: false, message: error?.message || "Preorders are currently closed." };
+  if (batchError) return { ok: false, message: batchError.message };
+  if (!activeBatch) return { ok: false, message: "Preorders are currently closed. Please check back later." };
+
+  const quantityByProduct = new Map<string, number>();
+  parsed.data.items.forEach((item) => {
+    quantityByProduct.set(item.product_id, (quantityByProduct.get(item.product_id) ?? 0) + item.quantity);
+  });
+  const productIds = [...quantityByProduct.keys()];
+
+  const { data: products, error: productError } = await supabase
+    .from("products")
+    .select("id,name,selling_price,cost_price")
+    .in("id", productIds)
+    .eq("active", true);
+
+  if (productError) return { ok: false, message: productError.message };
+  if (!products || products.length !== productIds.length) {
+    return { ok: false, message: "One or more preorder items are unavailable." };
   }
 
-  redirect(`/success?order=${encodeURIComponent(data[0].order_number)}`);
+  const lines = products.map((product) => {
+    const quantity = quantityByProduct.get(product.id) ?? 0;
+    const sellingPrice = Number(product.selling_price);
+    const costPrice = Number(product.cost_price);
+    return {
+      product_id: product.id,
+      product_name_snapshot: product.name,
+      quantity,
+      unit_selling_price_snapshot: sellingPrice,
+      unit_cost_price_snapshot: costPrice,
+      line_total: sellingPrice * quantity,
+      line_cost: costPrice * quantity,
+      line_profit: (sellingPrice - costPrice) * quantity
+    };
+  });
+
+  const subtotal = lines.reduce((sum, line) => sum + line.line_total, 0);
+  const totalCost = lines.reduce((sum, line) => sum + line.line_cost, 0);
+  const totalProfit = subtotal - totalCost;
+
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const { data: latestOrder, error: sequenceError } = await supabase
+      .from("orders")
+      .select("order_sequence")
+      .eq("batch_id", activeBatch.id)
+      .order("order_sequence", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (sequenceError) return { ok: false, message: sequenceError.message };
+
+    const nextSequence = Number(latestOrder?.order_sequence ?? 0) + 1;
+    const newOrderNumber = `${activeBatch.batch_code}-${String(nextSequence).padStart(3, "0")}`;
+    const { data: order, error: orderError } = await supabase
+      .from("orders")
+      .insert({
+        batch_id: activeBatch.id,
+        order_sequence: nextSequence,
+        order_number: newOrderNumber,
+        customer_name: parsed.data.customerName,
+        phone: parsed.data.phone,
+        notes: parsed.data.notes ?? null,
+        subtotal_amount: subtotal,
+        total_amount: subtotal,
+        total_cost: totalCost,
+        total_profit: totalProfit,
+        payment_status: "Payment Claimed by Customer",
+        order_status: "Submitted"
+      })
+      .select("id,order_number")
+      .single();
+
+    if (orderError?.code === "23505") continue;
+    if (orderError || !order) return { ok: false, message: orderError?.message ?? "Order could not be created." };
+
+    const { error: itemError } = await supabase
+      .from("order_items")
+      .insert(lines.map((line) => ({ ...line, order_id: order.id })));
+
+    if (itemError) {
+      await supabase.from("orders").delete().eq("id", order.id);
+      return { ok: false, message: itemError.message };
+    }
+
+    redirect(`/success?order=${encodeURIComponent(order.order_number)}`);
+  }
+
+  return { ok: false, message: "Please try submitting again. The order number was being used at the same time." };
 }
 
 export async function loginAdmin(_: ActionState, formData: FormData): Promise<ActionState> {
@@ -181,7 +269,7 @@ export async function saveProduct(_: AdminActionState, formData: FormData): Prom
     const supabase = createAdminClient();
     const payload = { ...parsed.data, image_url: null };
     const { error } = id ? await supabase.from("products").update(payload).eq("id", id) : await supabase.from("products").insert(payload);
-    if (error) return { ok: false, message: error.message };
+    if (error) return { ok: false, message: adminErrorMessage(error.message) };
 
     revalidatePath("/admin/products");
     return { ok: true, message: "Product saved." };
@@ -224,7 +312,7 @@ export async function saveBatch(_: AdminActionState, formData: FormData): Promis
     const supabase = createAdminClient();
     const { error } = id ? await supabase.from("batches").update(payload).eq("id", id) : await supabase.from("batches").insert(payload);
     if (error?.code === "23505") return { ok: false, message: "A batch with this date already exists, or another batch is already Active." };
-    if (error) return { ok: false, message: error.message };
+    if (error) return { ok: false, message: adminErrorMessage(error.message) };
 
     revalidatePath("/admin/batches");
     revalidatePath("/");
