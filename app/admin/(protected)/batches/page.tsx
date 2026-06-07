@@ -1,4 +1,4 @@
-import { CalendarPlus } from "lucide-react";
+import { CalendarPlus, Download } from "lucide-react";
 import { AdminBatchForm } from "@/components/admin-batch-form";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -30,6 +30,10 @@ export default async function BatchesPage() {
               </div>
               <span className={batch.status === "Active" ? "badge-good" : "badge"}>{batch.status}</span>
             </div>
+            <a href={`/api/admin/export/batch-paid?batchId=${batch.id}`} className="btn-secondary mb-4 min-h-10 w-full px-3 py-2">
+              <Download className="h-4 w-4" />
+              Paid orders CSV
+            </a>
             <AdminBatchForm batch={batch} />
           </section>
         ))}

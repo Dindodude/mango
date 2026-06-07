@@ -7,9 +7,9 @@ export default async function AdminDashboardPage() {
   const supabase = createAdminClient();
   const [{ data: activeBatch }, { data: orders }, { data: recentOrders }, { data: items }] = await Promise.all([
     supabase.from("batches").select("*").eq("status", "Active").maybeSingle(),
-    supabase.from("orders").select("*,batches(batch_name)").order("created_at", { ascending: false }),
-    supabase.from("orders").select("*,batches(batch_name)").order("created_at", { ascending: false }).limit(8),
-    supabase.from("order_items").select("product_name_snapshot,quantity,line_total,line_cost,line_profit")
+    supabase.from("orders").select("*,batches(batch_name)").neq("order_status", "Cancelled").order("created_at", { ascending: false }),
+    supabase.from("orders").select("*,batches(batch_name)").neq("order_status", "Cancelled").order("created_at", { ascending: false }).limit(8),
+    supabase.from("order_items").select("product_name_snapshot,quantity,line_total,line_cost,line_profit,orders!inner(order_status)").neq("orders.order_status", "Cancelled")
   ]);
 
   const allOrders = orders ?? [];

@@ -327,13 +327,24 @@ export async function updateOrder(formData: FormData) {
   const orderId = String(formData.get("id"));
   const paymentValues = formData.getAll("payment_status");
   const orderValues = formData.getAll("order_status");
+  const orderStatus = cleanText(orderValues[orderValues.length - 1], 60);
+  const supabase = createAdminClient();
+
+  if (orderStatus === "Cancelled") {
+    await supabase.from("orders").delete().eq("id", orderId);
+    revalidatePath("/admin/orders");
+    revalidatePath("/admin");
+    revalidatePath("/admin/reports");
+    redirect("/admin/orders");
+  }
+
   const payload = {
     payment_status: cleanText(paymentValues[paymentValues.length - 1], 60),
-    order_status: cleanText(orderValues[orderValues.length - 1], 60),
+    order_status: orderStatus,
     payment_reference_notes: cleanText(formData.get("payment_reference_notes"), 700),
     admin_notes: cleanText(formData.get("admin_notes"), 1000)
   };
-  await createAdminClient().from("orders").update(payload).eq("id", orderId);
+  await supabase.from("orders").update(payload).eq("id", orderId);
   revalidatePath("/admin/orders");
   revalidatePath(`/admin/orders/${orderId}`);
 }

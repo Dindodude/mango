@@ -11,6 +11,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Recor
   let query = supabase
     .from("orders")
     .select("*,batches(batch_name),order_items(product_name_snapshot,quantity)")
+    .neq("order_status", "Cancelled")
     .order("created_at", { ascending: searchParams.sort === "oldest" });
   if (payment) query = query.eq("payment_status", payment);
   if (status) query = query.eq("order_status", status);
@@ -46,7 +47,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Recor
         </select>
         <select name="status" defaultValue={status} className="field">
           <option value="">All status</option>
-          {["Submitted", "Confirmed", "Ready for Pickup", "Completed", "Cancelled"].map((item) => (
+          {["Submitted", "Confirmed", "Ready for Pickup", "Completed"].map((item) => (
             <option key={item}>{item}</option>
           ))}
         </select>

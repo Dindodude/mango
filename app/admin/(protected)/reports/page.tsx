@@ -5,8 +5,8 @@ import { money } from "@/lib/utils";
 export default async function ReportsPage() {
   const supabase = createAdminClient();
   const [{ data: orders }, { data: items }] = await Promise.all([
-    supabase.from("orders").select("*,batches(batch_name)").order("created_at", { ascending: false }),
-    supabase.from("order_items").select("*")
+    supabase.from("orders").select("*,batches(batch_name)").neq("order_status", "Cancelled").order("created_at", { ascending: false }),
+    supabase.from("order_items").select("*,orders!inner(order_status)").neq("orders.order_status", "Cancelled")
   ]);
 
   const byBatch = Object.values((orders ?? []).reduce<Record<string, any>>((acc, order) => {
