@@ -26,10 +26,10 @@ next.config.mjs
 
 Wrong GitHub root example:
 
-build-a-full-stack-mango-preorder-v11-cancel-delete-batch-csv/app/
+build-a-full-stack-mango-preorder-v12-orders-by-batch/app/
 package.json
 
 Wrong GitHub root example:
 
-build-a-full-stack-mango-preorder-v11-cancel-delete-batch-csv.zip
+build-a-full-stack-mango-preorder-v12-orders-by-batch.zip
 package.json

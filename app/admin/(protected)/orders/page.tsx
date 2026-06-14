@@ -20,6 +20,23 @@ export default async function OrdersPage({ searchParams }: { searchParams: Recor
     const haystack = `${order.customer_name} ${order.phone} ${order.order_number}`.toLowerCase();
     return haystack.includes(search.toLowerCase());
   });
+  const groupedOrders = Object.values(
+    filtered.reduce<Record<string, any>>((acc, order) => {
+      const batchName = order.batches?.batch_name ?? "No batch";
+      acc[batchName] ??= {
+        batchName,
+        orders: [],
+        revenue: 0,
+        profit: 0,
+        quantity: 0
+      };
+      acc[batchName].orders.push(order);
+      acc[batchName].revenue += Number(order.total_amount);
+      acc[batchName].profit += Number(order.total_profit);
+      acc[batchName].quantity += (order.order_items ?? []).reduce((sum: number, item: any) => sum + Number(item.quantity), 0);
+      return acc;
+    }, {})
+  );
 
   return (
     <div className="admin-shell">
@@ -61,52 +78,76 @@ export default async function OrdersPage({ searchParams }: { searchParams: Recor
         </button>
       </form>
 
-      <div className="table-shell mt-5">
-        <table className="data-table min-w-[1120px]">
-          <thead>
-            <tr>
-              {["Order", "Batch", "Customer", "Items", "Total", "Cost", "Profit", "Payment", "Status", "Submitted"].map((head) => (
-                <th key={head}>{head}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((order) => (
-              <tr key={order.id} className={order.payment_status === "Payment Claimed by Customer" ? "bg-amber-50/70" : ""}>
-                <td className="font-black">
-                  <Link className="text-leaf-700 hover:text-leaf-900" href={`/admin/orders/${order.id}`}>
-                    {order.order_number}
-                  </Link>
-                </td>
-                <td>{order.batches?.batch_name}</td>
-                <td>
-                  <span className="font-bold text-stone-950">{order.customer_name}</span>
-                  <br />
-                  <span className="text-stone-500">{order.phone}</span>
-                </td>
-                <td>{order.order_items?.map((item: any) => `${item.product_name_snapshot} x${item.quantity}`).join(", ")}</td>
-                <td className="font-bold text-stone-950">{money(order.total_amount)}</td>
-                <td>{money(order.total_cost)}</td>
-                <td className="font-bold text-leaf-700">{money(order.total_profit)}</td>
-                <td>
-                  <StatusBadge status={order.payment_status} />
-                </td>
-                <td>
-                  <StatusBadge status={order.order_status} />
-                </td>
-                <td>{new Date(order.created_at).toLocaleDateString()}</td>
-              </tr>
-            ))}
-            {!filtered.length && (
-              <tr>
-                <td colSpan={10} className="py-10 text-center font-semibold text-stone-500">
-                  No orders match these filters.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+      <div className="mt-5 space-y-5">
+        {groupedOrders.map((group: any) => (
+          <section key={group.batchName} className="overflow-hidden rounded-lg border border-stone-200 bg-white shadow-crisp">
+            <div className="flex flex-col gap-3 border-b border-stone-200 bg-stone-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-lg font-black text-stone-950">{group.batchName}</h2>
+                <p className="mt-1 text-sm font-semibold text-stone-600">
+                  {group.orders.length} orders - {group.quantity} items
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-sm sm:flex sm:items-center">
+                <SummaryPill label="Revenue" value={money(group.revenue)} />
+                <SummaryPill label="Profit" value={money(group.profit)} good />
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="data-table min-w-[1040px]">
+                <thead>
+                  <tr>
+                    {["Order", "Customer", "Items", "Total", "Cost", "Profit", "Payment", "Status", "Submitted"].map((head) => (
+                      <th key={head}>{head}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {group.orders.map((order: any) => (
+                    <tr key={order.id} className={order.payment_status === "Payment Claimed by Customer" ? "bg-amber-50/70" : ""}>
+                      <td className="font-black">
+                        <Link className="text-leaf-700 hover:text-leaf-900" href={`/admin/orders/${order.id}`}>
+                          {order.order_number}
+                        </Link>
+                      </td>
+                      <td>
+                        <span className="font-bold text-stone-950">{order.customer_name}</span>
+                        <br />
+                        <span className="text-stone-500">{order.phone}</span>
+                      </td>
+                      <td>{order.order_items?.map((item: any) => `${item.product_name_snapshot} x${item.quantity}`).join(", ")}</td>
+                      <td className="font-bold text-stone-950">{money(order.total_amount)}</td>
+                      <td>{money(order.total_cost)}</td>
+                      <td className="font-bold text-leaf-700">{money(order.total_profit)}</td>
+                      <td>
+                        <StatusBadge status={order.payment_status} />
+                      </td>
+                      <td>
+                        <StatusBadge status={order.order_status} />
+                      </td>
+                      <td>{new Date(order.created_at).toLocaleDateString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        ))}
+        {!groupedOrders.length && (
+          <div className="surface p-10 text-center font-semibold text-stone-500">
+            No orders match these filters.
+          </div>
+        )}
       </div>
+    </div>
+  );
+}
+
+function SummaryPill({ label, value, good = false }: { label: string; value: string; good?: boolean }) {
+  return (
+    <div className="rounded-md border border-stone-200 bg-white px-3 py-2 shadow-crisp">
+      <p className="text-xs font-black uppercase tracking-wide text-stone-500">{label}</p>
+      <p className={`mt-0.5 font-black ${good ? "text-leaf-700" : "text-stone-950"}`}>{value}</p>
     </div>
   );
 }
