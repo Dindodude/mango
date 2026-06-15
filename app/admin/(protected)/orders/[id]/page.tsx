@@ -5,11 +5,14 @@ import { orderStatuses, paymentStatuses, PICKUP_ADDRESS } from "@/lib/constants"
 import { createAdminClient } from "@/lib/supabase/admin";
 import { money } from "@/lib/utils";
 
-export default async function OrderDetailPage({ params }: { params: { id: string } }) {
-  const { data: order } = await createAdminClient()
+export default async function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const supabase = createAdminClient();
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
+  const { data: order } = await supabase
     .from("orders")
     .select("*,batches(*),order_items(*)")
-    .eq("id", params.id)
+    .eq(isUuid ? "id" : "order_number", id)
     .maybeSingle();
 
   if (!order) return <div className="admin-shell">Order not found.</div>;
