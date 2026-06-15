@@ -1,35 +1,40 @@
 import Link from "next/link";
 import { Download, Filter, Search } from "lucide-react";
+import { AdminSectionHeader, EmptyState, StatusBadge } from "@/components/admin-ui";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { money } from "@/lib/utils";
+
+function quickFilter(order: any, quick: string) {
+  if (quick === "needs-payment") return order.payment_status === "Payment Claimed by Customer" || order.payment_status === "Payment Issue";
+  if (quick === "paid") return order.payment_status === "Payment Verified";
+  if (quick === "ready") return order.order_status === "Ready for Pickup";
+  if (quick === "completed") return order.order_status === "Completed";
+  if (quick === "problem") return order.payment_status !== "Payment Verified" || order.order_status === "Submitted";
+  return true;
+}
 
 export default async function OrdersPage({ searchParams }: { searchParams: Record<string, string | undefined> }) {
   const supabase = createAdminClient();
   const search = searchParams.search ?? "";
   const payment = searchParams.payment ?? "";
   const status = searchParams.status ?? "";
+  const quick = searchParams.quick ?? "";
   let query = supabase
     .from("orders")
-    .select("*,batches(batch_name),order_items(product_name_snapshot,quantity)")
+    .select("*,batches(id,batch_name,batch_code),order_items(product_name_snapshot,quantity)")
     .neq("order_status", "Cancelled")
     .order("created_at", { ascending: searchParams.sort === "oldest" });
   if (payment) query = query.eq("payment_status", payment);
   if (status) query = query.eq("order_status", status);
   const { data: orders } = await query;
   const filtered = (orders ?? []).filter((order) => {
-    const haystack = `${order.customer_name} ${order.phone} ${order.order_number}`.toLowerCase();
-    return haystack.includes(search.toLowerCase());
+    const haystack = `${order.customer_name} ${order.phone} ${order.customer_email ?? ""} ${order.order_number}`.toLowerCase();
+    return haystack.includes(search.toLowerCase()) && quickFilter(order, quick);
   });
   const groupedOrders = Object.values(
     filtered.reduce<Record<string, any>>((acc, order) => {
       const batchName = order.batches?.batch_name ?? "No batch";
-      acc[batchName] ??= {
-        batchName,
-        orders: [],
-        revenue: 0,
-        profit: 0,
-        quantity: 0
-      };
+      acc[batchName] ??= { batchName, batchId: order.batches?.id, orders: [], revenue: 0, profit: 0, quantity: 0 };
       acc[batchName].orders.push(order);
       acc[batchName].revenue += Number(order.total_amount);
       acc[batchName].profit += Number(order.total_profit);
@@ -41,32 +46,39 @@ export default async function OrdersPage({ searchParams }: { searchParams: Recor
   return (
     <div className="admin-shell">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="eyebrow">Fulfillment</p>
-          <h1 className="mt-2 text-3xl font-black text-stone-950 sm:text-4xl">Orders</h1>
-          <p className="mt-1 text-sm font-semibold text-stone-600">{filtered.length} orders shown</p>
-        </div>
+        <AdminSectionHeader eyebrow="Fulfillment" title="Orders" description={`${filtered.length} orders shown`} />
         <a href={`/api/admin/export/orders?${new URLSearchParams(searchParams as Record<string, string>).toString()}`} className="btn-primary">
           <Download className="h-4 w-4" /> Export CSV
         </a>
       </div>
 
-      <form className="surface mt-5 grid gap-3 p-4 md:grid-cols-[1.4fr_1fr_1fr_0.8fr_auto]">
+      <div className="mt-5 flex flex-wrap gap-2">
+        {[
+          ["", "All"],
+          ["needs-payment", "Needs payment check"],
+          ["paid", "Paid"],
+          ["ready", "Ready"],
+          ["completed", "Completed"],
+          ["problem", "Problem"]
+        ].map(([value, label]) => (
+          <Link key={value || "all"} href={`/admin/orders${value ? `?quick=${value}` : ""}`} className={quick === value ? "btn-primary min-h-10 px-3 py-2" : "btn-secondary min-h-10 px-3 py-2"}>
+            {label}
+          </Link>
+        ))}
+      </div>
+
+      <form className="surface mt-4 grid gap-3 p-4 md:grid-cols-[1.4fr_1fr_1fr_0.8fr_auto]">
         <label className="relative">
           <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-stone-400" />
-          <input name="search" defaultValue={search} placeholder="Name, phone, order number" className="field pl-9" />
+          <input name="search" defaultValue={search} placeholder="Name, phone, email, order number" className="field pl-9" />
         </label>
         <select name="payment" defaultValue={payment} className="field">
           <option value="">All payment</option>
-          {["Awaiting Payment", "Payment Claimed by Customer", "Payment Verified", "Payment Issue", "Refunded"].map((item) => (
-            <option key={item}>{item}</option>
-          ))}
+          {["Awaiting Payment", "Payment Claimed by Customer", "Payment Verified", "Payment Issue", "Refunded"].map((item) => <option key={item}>{item}</option>)}
         </select>
         <select name="status" defaultValue={status} className="field">
           <option value="">All status</option>
-          {["Submitted", "Confirmed", "Ready for Pickup", "Completed"].map((item) => (
-            <option key={item}>{item}</option>
-          ))}
+          {["Submitted", "Confirmed", "Ready for Pickup", "Completed"].map((item) => <option key={item}>{item}</option>)}
         </select>
         <select name="sort" defaultValue={searchParams.sort ?? "newest"} className="field">
           <option value="newest">Newest</option>
@@ -81,50 +93,40 @@ export default async function OrdersPage({ searchParams }: { searchParams: Recor
       <div className="mt-5 space-y-5">
         {groupedOrders.map((group: any) => (
           <section key={group.batchName} className="overflow-hidden rounded-lg border border-stone-200 bg-white shadow-crisp">
-            <div className="flex flex-col gap-3 border-b border-stone-200 bg-stone-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-3 border-b border-stone-200 bg-stone-50 px-4 py-4 xl:flex-row xl:items-center xl:justify-between">
               <div>
                 <h2 className="text-lg font-black text-stone-950">{group.batchName}</h2>
-                <p className="mt-1 text-sm font-semibold text-stone-600">
-                  {group.orders.length} orders - {group.quantity} items
-                </p>
+                <p className="mt-1 text-sm font-semibold text-stone-600">{group.orders.length} orders - {group.quantity} items - {money(group.revenue)}</p>
               </div>
-              <div className="grid grid-cols-2 gap-2 text-sm sm:flex sm:items-center">
-                <SummaryPill label="Revenue" value={money(group.revenue)} />
-                <SummaryPill label="Profit" value={money(group.profit)} good />
-              </div>
+              {group.batchId && (
+                <div className="flex flex-wrap gap-2">
+                  <ExportButton href={`/api/admin/export/batch-paid?batchId=${group.batchId}`} label="Paid" />
+                  <ExportButton href={`/api/admin/export/supplier?batchId=${group.batchId}`} label="Supplier" />
+                  <ExportButton href={`/api/admin/export/pickup?batchId=${group.batchId}`} label="Pickup" />
+                  <ExportButton href={`/api/admin/export/problem?batchId=${group.batchId}`} label="Problems" />
+                </div>
+              )}
             </div>
-            <div className="overflow-x-auto">
-              <table className="data-table min-w-[1040px]">
+
+            <div className="grid gap-3 p-3 md:hidden">
+              {group.orders.map((order: any) => <MobileOrderCard key={order.id} order={order} />)}
+            </div>
+
+            <div className="hidden overflow-x-auto md:block">
+              <table className="data-table min-w-[1120px]">
                 <thead>
-                  <tr>
-                    {["Order", "Customer", "Items", "Total", "Cost", "Profit", "Payment", "Status", "Submitted"].map((head) => (
-                      <th key={head}>{head}</th>
-                    ))}
-                  </tr>
+                  <tr>{["Order", "Customer", "Items", "Total", "Profit", "Payment", "Status", "Submitted"].map((head) => <th key={head}>{head}</th>)}</tr>
                 </thead>
                 <tbody>
                   {group.orders.map((order: any) => (
                     <tr key={order.id} className={order.payment_status === "Payment Claimed by Customer" ? "bg-amber-50/70" : ""}>
-                      <td className="font-black">
-                        <Link className="text-leaf-700 hover:text-leaf-900" href={`/admin/orders/${order.id}`}>
-                          {order.order_number}
-                        </Link>
-                      </td>
-                      <td>
-                        <span className="font-bold text-stone-950">{order.customer_name}</span>
-                        <br />
-                        <span className="text-stone-500">{order.phone}</span>
-                      </td>
+                      <td className="font-black"><Link className="text-leaf-700 hover:text-leaf-900" href={`/admin/orders/${order.id}`}>{order.order_number}</Link></td>
+                      <td><span className="font-bold text-stone-950">{order.customer_name}</span><br /><span className="text-stone-500">{order.phone}</span></td>
                       <td>{order.order_items?.map((item: any) => `${item.product_name_snapshot} x${item.quantity}`).join(", ")}</td>
                       <td className="font-bold text-stone-950">{money(order.total_amount)}</td>
-                      <td>{money(order.total_cost)}</td>
                       <td className="font-bold text-leaf-700">{money(order.total_profit)}</td>
-                      <td>
-                        <StatusBadge status={order.payment_status} />
-                      </td>
-                      <td>
-                        <StatusBadge status={order.order_status} />
-                      </td>
+                      <td><StatusBadge status={order.payment_status} /></td>
+                      <td><StatusBadge status={order.order_status} /></td>
                       <td>{new Date(order.created_at).toLocaleDateString()}</td>
                     </tr>
                   ))}
@@ -133,31 +135,32 @@ export default async function OrdersPage({ searchParams }: { searchParams: Recor
             </div>
           </section>
         ))}
-        {!groupedOrders.length && (
-          <div className="surface p-10 text-center font-semibold text-stone-500">
-            No orders match these filters.
-          </div>
-        )}
+        {!groupedOrders.length && <EmptyState title="No orders match these filters." body="Try clearing filters or checking another batch." />}
       </div>
     </div>
   );
 }
 
-function SummaryPill({ label, value, good = false }: { label: string; value: string; good?: boolean }) {
-  return (
-    <div className="rounded-md border border-stone-200 bg-white px-3 py-2 shadow-crisp">
-      <p className="text-xs font-black uppercase tracking-wide text-stone-500">{label}</p>
-      <p className={`mt-0.5 font-black ${good ? "text-leaf-700" : "text-stone-950"}`}>{value}</p>
-    </div>
-  );
+function ExportButton({ href, label }: { href: string; label: string }) {
+  return <a href={href} className="btn-secondary min-h-9 px-3 py-1.5 text-xs"><Download className="h-3.5 w-3.5" />{label}</a>;
 }
 
-function StatusBadge({ status }: { status: string }) {
-  if (status.includes("Verified") || status.includes("Completed") || status.includes("Confirmed")) {
-    return <span className="badge-good">{status}</span>;
-  }
-  if (status.includes("Issue") || status.includes("Claimed") || status.includes("Awaiting")) {
-    return <span className="badge-warm">{status}</span>;
-  }
-  return <span className="badge">{status}</span>;
+function MobileOrderCard({ order }: { order: any }) {
+  return (
+    <Link href={`/admin/orders/${order.id}`} className={`rounded-lg border p-4 shadow-crisp ${order.payment_status === "Payment Claimed by Customer" ? "border-amber-200 bg-amber-50" : "border-stone-200 bg-white"}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="font-black text-stone-950">{order.order_number}</p>
+          <p className="text-sm font-semibold text-stone-600">{order.customer_name}</p>
+          <p className="text-xs text-stone-500">{order.phone}</p>
+        </div>
+        <p className="font-black text-stone-950">{money(order.total_amount)}</p>
+      </div>
+      <p className="mt-3 text-sm text-stone-700">{order.order_items?.map((item: any) => `${item.product_name_snapshot} x${item.quantity}`).join(", ")}</p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <StatusBadge status={order.payment_status} />
+        <StatusBadge status={order.order_status} />
+      </div>
+    </Link>
+  );
 }

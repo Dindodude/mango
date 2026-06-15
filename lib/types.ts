@@ -26,6 +26,7 @@ export type CartLine = {
   name: string;
   price: number;
   quantity: number;
+  category?: string;
 };
 
 export type OrderItem = {
@@ -45,6 +46,7 @@ export type Order = {
   order_sequence: number;
   order_number: string;
   customer_name: string;
+  customer_email?: string | null;
   phone: string;
   notes: string | null;
   subtotal_amount: number;
@@ -55,5 +57,8 @@ export type Order = {
   order_status: string;
   payment_reference_notes: string | null;
   admin_notes: string | null;
+  order_received_email_sent_at?: string | null;
+  payment_verified_email_sent_at?: string | null;
+  last_email_error?: string | null;
   created_at: string;
 };

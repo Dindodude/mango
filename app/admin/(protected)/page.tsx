@@ -1,120 +1,136 @@
 import Link from "next/link";
-import { AlertTriangle, ArrowUpRight, Banknote, Boxes, ClipboardList, CreditCard, DollarSign, PackageCheck, TrendingUp } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, ClipboardList, Download, PackageCheck, Truck } from "lucide-react";
+import { AdminSectionHeader, EmptyState, MetricCard, StatusBadge } from "@/components/admin-ui";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { money } from "@/lib/utils";
 
 export default async function AdminDashboardPage() {
   const supabase = createAdminClient();
-  const [{ data: activeBatch }, { data: orders }, { data: recentOrders }, { data: items }] = await Promise.all([
+  const [{ data: activeBatch }, { data: orders }, { data: items }] = await Promise.all([
     supabase.from("batches").select("*").eq("status", "Active").maybeSingle(),
-    supabase.from("orders").select("*,batches(batch_name)").neq("order_status", "Cancelled").order("created_at", { ascending: false }),
-    supabase.from("orders").select("*,batches(batch_name)").neq("order_status", "Cancelled").order("created_at", { ascending: false }).limit(8),
-    supabase.from("order_items").select("product_name_snapshot,quantity,line_total,line_cost,line_profit,orders!inner(order_status)").neq("orders.order_status", "Cancelled")
+    supabase.from("orders").select("*,batches(batch_name,batch_code),order_items(product_name_snapshot,quantity,line_total,line_profit)").neq("order_status", "Cancelled").order("created_at", { ascending: false }),
+    supabase.from("order_items").select("product_name_snapshot,quantity,line_total,line_profit,orders!inner(payment_status,order_status,batch_id)").eq("orders.payment_status", "Payment Verified").neq("orders.order_status", "Cancelled")
   ]);
 
   const allOrders = orders ?? [];
-  const paid = allOrders.filter((order) => order.payment_status === "Payment Verified");
-  const problem = allOrders.filter((order) => ["Awaiting Payment", "Payment Issue", "Payment Claimed by Customer"].includes(order.payment_status));
-  const totals = allOrders.reduce(
+  const activeOrders = activeBatch ? allOrders.filter((order) => order.batch_id === activeBatch.id) : allOrders;
+  const needsPayment = activeOrders.filter((order) => order.payment_status === "Payment Claimed by Customer" || order.payment_status === "Payment Issue");
+  const ready = activeOrders.filter((order) => order.order_status === "Ready for Pickup");
+  const paid = activeOrders.filter((order) => order.payment_status === "Payment Verified");
+  const totals = activeOrders.reduce(
     (acc, order) => ({
       revenue: acc.revenue + Number(order.total_amount),
-      cost: acc.cost + Number(order.total_cost),
       profit: acc.profit + Number(order.total_profit),
       outstanding: acc.outstanding + (order.payment_status === "Payment Verified" ? 0 : Number(order.total_amount))
     }),
-    { revenue: 0, cost: 0, profit: 0, outstanding: 0 }
+    { revenue: 0, profit: 0, outstanding: 0 }
   );
 
-  const productSummary = Object.values(
-    (items ?? []).reduce<Record<string, { name: string; quantity: number; revenue: number }>>((acc, item) => {
-      const key = item.product_name_snapshot;
-      acc[key] ??= { name: key, quantity: 0, revenue: 0 };
-      acc[key].quantity += Number(item.quantity);
-      acc[key].revenue += Number(item.line_total);
-      return acc;
-    }, {})
-  ).slice(0, 8);
+  const supplierSummary = Object.values(
+    (items ?? [])
+      .filter((item: any) => !activeBatch || item.orders?.batch_id === activeBatch.id)
+      .reduce<Record<string, { name: string; quantity: number; revenue: number; profit: number }>>((acc, item) => {
+        const key = item.product_name_snapshot;
+        acc[key] ??= { name: key, quantity: 0, revenue: 0, profit: 0 };
+        acc[key].quantity += Number(item.quantity);
+        acc[key].revenue += Number(item.line_total);
+        acc[key].profit += Number(item.line_profit);
+        return acc;
+      }, {})
+  ).sort((a, b) => b.quantity - a.quantity);
 
   return (
     <div className="admin-shell">
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="eyebrow">Operations</p>
-          <h1 className="mt-2 text-3xl font-black text-stone-950 sm:text-4xl">Dashboard</h1>
-          <p className="mt-1 text-sm font-semibold text-stone-600">{activeBatch ? `Active: ${activeBatch.batch_name}` : "No active batch"}</p>
-        </div>
-        <Link href="/admin/orders" className="btn-primary">
-          View orders
+        <AdminSectionHeader
+          eyebrow="Operations"
+          title="Admin Dashboard"
+          description={activeBatch ? `Active batch: ${activeBatch.batch_name}` : "No active batch"}
+        />
+        <Link href="/admin/orders?quick=needs-payment" className="btn-primary">
+          Verify payments
           <ArrowUpRight className="h-4 w-4" />
         </Link>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Metric icon={<ClipboardList />} label="Total orders" value={allOrders.length} />
-        <Metric icon={<PackageCheck />} label="Submitted" value={allOrders.filter((o) => o.order_status === "Submitted").length} />
-        <Metric icon={<CreditCard />} label="Paid" value={paid.length} />
-        <Metric icon={<AlertTriangle />} label="Unpaid/problem" value={problem.length} warning />
-        <Metric icon={<DollarSign />} label="Revenue" value={money(totals.revenue)} />
-        <Metric icon={<Banknote />} label="Cost" value={money(totals.cost)} />
-        <Metric icon={<TrendingUp />} label="Profit" value={money(totals.profit)} />
-        <Metric icon={<AlertTriangle />} label="Outstanding" value={money(totals.outstanding)} warning />
+        <MetricCard label="Needs payment check" value={needsPayment.length} tone={needsPayment.length ? "warn" : "good"} />
+        <MetricCard label="Verified paid" value={paid.length} tone="good" />
+        <MetricCard label="Ready for pickup" value={ready.length} />
+        <MetricCard label="Outstanding" value={money(totals.outstanding)} tone={totals.outstanding ? "warn" : "good"} />
+        <MetricCard label="Active batch orders" value={activeOrders.length} />
+        <MetricCard label="Revenue" value={money(totals.revenue)} />
+        <MetricCard label="Profit" value={money(totals.profit)} tone="good" />
+        <MetricCard label="All open orders" value={allOrders.length} />
       </div>
 
-      <div className="mt-6 grid gap-5 lg:grid-cols-2">
+      <div className="mt-6 grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
         <section className="surface p-5">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="font-black text-stone-950">Product Summary</h2>
-            <Boxes className="h-5 w-5 text-leaf-700" />
+            <h2 className="font-black text-stone-950">Needs Attention</h2>
+            <AlertTriangle className="h-5 w-5 text-amber-600" />
           </div>
           <div className="mt-4 space-y-3">
-            {productSummary.map((product) => (
-              <div key={product.name} className="flex items-center justify-between gap-4 rounded-md border border-stone-100 bg-stone-50 px-3 py-2 text-sm">
-                <span className="font-bold text-stone-900">{product.name}</span>
-                <span className="text-right font-semibold text-stone-600">
-                  {product.quantity} units - {money(product.revenue)}
-                </span>
-              </div>
-            ))}
-            {!productSummary.length && <p className="rounded-md bg-stone-50 p-4 text-sm font-semibold text-stone-600">No product totals yet.</p>}
-          </div>
-        </section>
-
-        <section className="surface p-5">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="font-black text-stone-950">Recent Orders</h2>
-            <ClipboardList className="h-5 w-5 text-leaf-700" />
-          </div>
-          <div className="mt-4 space-y-3">
-            {(recentOrders ?? []).map((order) => (
-              <Link key={order.id} href={`/admin/orders/${order.id}`} className="flex justify-between gap-4 rounded-md border border-stone-100 bg-white p-3 text-sm shadow-crisp transition hover:border-leaf-100 hover:bg-leaf-50">
+            {needsPayment.slice(0, 8).map((order) => (
+              <Link key={order.id} href={`/admin/orders/${order.id}`} className="grid gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm shadow-crisp transition hover:bg-amber-100 sm:grid-cols-[1fr_auto]">
                 <span>
                   <strong className="text-stone-950">{order.order_number}</strong>
                   <br />
-                  <span className="text-stone-600">{order.customer_name}</span>
+                  <span className="text-stone-700">{order.customer_name} - {order.phone}</span>
                 </span>
-                <span className="text-right font-bold text-stone-950">
-                  {money(order.total_amount)}
-                  <br />
-                  {order.payment_status === "Payment Claimed by Customer" && <AlertTriangle className="ml-auto h-4 w-4 text-amber-600" />}
+                <span className="flex items-center gap-2 sm:justify-end">
+                  <StatusBadge status={order.payment_status} />
+                  <strong>{money(order.total_amount)}</strong>
                 </span>
               </Link>
             ))}
-            {!(recentOrders ?? []).length && <p className="rounded-md bg-stone-50 p-4 text-sm font-semibold text-stone-600">No orders yet.</p>}
+            {!needsPayment.length && <EmptyState title="No payment checks waiting." body="Orders that need manual payment review will show here." />}
           </div>
         </section>
-      </div>
-    </div>
-  );
-}
 
-function Metric({ icon, label, value, warning = false }: { icon: React.ReactNode; label: string; value: React.ReactNode; warning?: boolean }) {
-  return (
-    <div className={`surface p-4 ${warning ? "border-amber-200 bg-amber-50/70" : ""}`}>
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-sm font-bold text-stone-600">{label}</p>
-        <span className={`flex h-9 w-9 items-center justify-center rounded-md ${warning ? "bg-amber-100 text-amber-700" : "bg-leaf-50 text-leaf-700"}`}>{icon}</span>
+        <section className="surface p-5">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="font-black text-stone-950">Supplier Snapshot</h2>
+            <Truck className="h-5 w-5 text-leaf-700" />
+          </div>
+          <div className="mt-4 space-y-2">
+            {supplierSummary.slice(0, 10).map((item) => (
+              <div key={item.name} className="flex items-center justify-between gap-4 rounded-md bg-stone-50 px-3 py-2 text-sm">
+                <span className="font-black text-stone-950">{item.name}</span>
+                <span className="text-right font-semibold text-stone-600">{item.quantity}</span>
+              </div>
+            ))}
+            {!supplierSummary.length && <p className="rounded-md bg-stone-50 p-4 text-sm font-semibold text-stone-600">No verified paid items yet.</p>}
+          </div>
+          {activeBatch && (
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+              <a href={`/api/admin/export/supplier?batchId=${activeBatch.id}`} className="btn-secondary min-h-10 px-3 py-2">
+                <Download className="h-4 w-4" />
+                Supplier CSV
+              </a>
+              <a href={`/api/admin/export/pickup?batchId=${activeBatch.id}`} className="btn-secondary min-h-10 px-3 py-2">
+                <PackageCheck className="h-4 w-4" />
+                Pickup list
+              </a>
+            </div>
+          )}
+        </section>
       </div>
-      <p className="mt-3 text-2xl font-black text-stone-950">{value}</p>
+
+      <div className="mt-6 grid gap-3 sm:grid-cols-3">
+        <Link href="/admin/orders?quick=ready" className="surface p-4 font-black text-stone-950 transition hover:border-leaf-100 hover:bg-leaf-50">
+          Ready for pickup
+          <ClipboardList className="mt-3 h-5 w-5 text-leaf-700" />
+        </Link>
+        <Link href="/admin/batches" className="surface p-4 font-black text-stone-950 transition hover:border-leaf-100 hover:bg-leaf-50">
+          Batch tools
+          <ClipboardList className="mt-3 h-5 w-5 text-leaf-700" />
+        </Link>
+        <Link href="/admin/reports" className="surface p-4 font-black text-stone-950 transition hover:border-leaf-100 hover:bg-leaf-50">
+          Reports
+          <ClipboardList className="mt-3 h-5 w-5 text-leaf-700" />
+        </Link>
+      </div>
     </div>
   );
 }

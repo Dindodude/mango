@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarDays, Clock, MapPin, MessageCircle, ShieldCheck, ShoppingBasket, Truck } from "lucide-react";
+import { CalendarDays, Clock, CreditCard, MapPin, MessageCircle, ShieldCheck, ShoppingBasket, Truck } from "lucide-react";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { hasSupabaseConfig } from "@/lib/env";
@@ -15,25 +15,18 @@ export default async function HomePage() {
   return (
     <main>
       <SiteHeader />
-      <section
-        className="relative min-h-[70svh] overflow-hidden bg-stone-950"
-        style={{
-          backgroundImage:
-            "linear-gradient(90deg, rgba(18,24,18,0.86), rgba(18,24,18,0.54), rgba(18,24,18,0.18)), url('https://images.unsplash.com/photo-1553279768-865429fa0078?auto=format&fit=crop&w=1800&q=90')",
-          backgroundPosition: "center",
-          backgroundSize: "cover"
-        }}
-      >
-        <div className="shell flex min-h-[70svh] items-center py-14">
-          <div className="max-w-2xl text-white">
-            <div className="inline-flex items-center gap-2 rounded-md border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-black uppercase tracking-[0.18em] backdrop-blur">
+      <section className="relative overflow-hidden border-b border-stone-200 bg-[#f8f3df]">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(245,166,35,0.24),transparent_34%),radial-gradient(circle_at_85%_18%,rgba(47,93,39,0.14),transparent_30%)]" />
+        <div className="shell relative grid min-h-[72svh] gap-10 py-14 md:grid-cols-[1.05fr_0.95fr] md:items-center">
+          <div className="max-w-2xl">
+            <div className="inline-flex items-center gap-2 rounded-md border border-leaf-100 bg-white/70 px-3 py-1.5 text-xs font-black uppercase tracking-[0.18em] text-leaf-700 shadow-crisp">
               <Clock className="h-4 w-4 text-mango-300" />
               Seasonal preorder
             </div>
-            <h1 className="mt-5 max-w-3xl text-4xl font-black leading-[1.02] md:text-6xl">
+            <h1 className="mt-5 max-w-3xl text-4xl font-black leading-[1.02] text-stone-950 md:text-6xl">
               Fresh mangoes, preordered in minutes.
             </h1>
-            <p className="mt-5 max-w-xl text-base leading-7 text-white/80 md:text-lg">
+            <p className="mt-5 max-w-xl text-base leading-7 text-stone-700 md:text-lg">
               Choose your items, send e-transfer, and submit your preorder. We check payment and confirm soon.
             </p>
             <div className="mt-7 flex flex-col gap-3 sm:flex-row">
@@ -41,19 +34,40 @@ export default async function HomePage() {
                 <ShoppingBasket className="h-4 w-4" />
                 Start preorder
               </Link>
-              <a href={`sms:${CONTACT_PHONE_E164}`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-white/25 bg-white/10 px-4 py-2.5 text-sm font-bold text-white backdrop-blur transition hover:bg-white/20">
+              <a href={`sms:${CONTACT_PHONE_E164}`} className="btn-secondary">
                 <MessageCircle className="h-4 w-4" />
                 Text us
               </a>
             </div>
-            <p className="mt-5 max-w-lg text-sm font-medium text-white/70">
+            <p className="mt-5 max-w-lg text-sm font-semibold text-stone-600">
               This is a preorder request. Your order is not confirmed until payment is checked.
             </p>
+          </div>
+          <div className="grid gap-3">
+            <div className="surface p-5 shadow-lift">
+              <span className={activeBatch ? "badge-good" : "badge-warm"}>{activeBatch ? "Open now" : "Closed"}</span>
+              <h2 className="mt-4 text-2xl font-black text-stone-950">{activeBatch ? activeBatch.batch_name : "No active preorder"}</h2>
+              <p className="mt-2 text-sm font-semibold text-stone-600">
+                {activeBatch ? `Expected arrival ${activeBatch.expected_arrival_date}` : "Please check back soon or text us."}
+              </p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="surface-muted p-4">
+                <CreditCard className="h-5 w-5 text-leaf-700" />
+                <p className="mt-3 text-xs font-black uppercase tracking-wide text-stone-500">Payment</p>
+                <p className="mt-1 font-black text-stone-950">{ETRANSFER_EMAIL}</p>
+              </div>
+              <div className="surface-muted p-4">
+                <MapPin className="h-5 w-5 text-leaf-700" />
+                <p className="mt-3 text-xs font-black uppercase tracking-wide text-stone-500">Pickup</p>
+                <p className="mt-1 font-black text-stone-950">{PICKUP_ADDRESS}</p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      <section className="shell -mt-8 relative z-10">
+      <section className="shell py-8">
         <div className="grid gap-3 md:grid-cols-3">
           <InfoCard icon={<CalendarDays />} title="Current Preorder">
             {activeBatch ? (

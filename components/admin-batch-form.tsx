@@ -1,6 +1,6 @@
 "use client";
 
-import { useFormState } from "react-dom";
+import { useActionState } from "react";
 import { saveBatch, type AdminActionState } from "@/app/actions";
 import { batchStatuses } from "@/lib/constants";
 import { AdminFormButton } from "@/components/admin-form-button";
@@ -15,25 +15,34 @@ function displayDate(value?: string) {
 }
 
 export function AdminBatchForm({ batch }: { batch?: any }) {
-  const [state, formAction] = useFormState(saveBatch, initialState);
+  const [state, formAction] = useActionState(saveBatch, initialState);
 
   return (
     <form action={formAction} className="mt-4 grid gap-3 sm:grid-cols-2">
       <input type="hidden" name="id" value={batch?.id ?? ""} />
       <input type="hidden" name="start_date" value={batch?.start_date ?? ""} />
-      <input
-        name="arrival_date"
-        defaultValue={displayDate(batch?.expected_arrival_date)}
-        placeholder="June 15 2026"
-        required
-        className="field"
-      />
-      <input name="batch_name" defaultValue={batch?.batch_name ?? ""} placeholder="Name, optional" className="field" />
-      <select name="status" defaultValue={batch?.status ?? "Draft"} className="field">
-        {batchStatuses.map((status) => (
-          <option key={status}>{status}</option>
-        ))}
-      </select>
+      <label>
+        <span className="label mb-1.5 block">Arrival date</span>
+        <input
+          name="arrival_date"
+          defaultValue={displayDate(batch?.expected_arrival_date)}
+          placeholder="June 15 2026"
+          required
+          className="field"
+        />
+      </label>
+      <label>
+        <span className="label mb-1.5 block">Batch name</span>
+        <input name="batch_name" defaultValue={batch?.batch_name ?? ""} placeholder="Optional" className="field" />
+      </label>
+      <label>
+        <span className="label mb-1.5 block">Status</span>
+        <select name="status" defaultValue={batch?.status ?? "Draft"} className="field">
+          {batchStatuses.map((status) => (
+            <option key={status}>{status}</option>
+          ))}
+        </select>
+      </label>
       <div className="flex items-center rounded-md bg-leaf-50 px-3 py-2 text-sm font-bold text-leaf-700">
         Order numbers are generated automatically.
       </div>

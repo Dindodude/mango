@@ -34,6 +34,7 @@ create table if not exists public.orders (
   order_number text not null unique,
   success_token text,
   customer_name text not null,
+  customer_email text,
   phone text not null,
   notes text,
   subtotal_amount numeric(10,2) not null default 0,
@@ -44,6 +45,9 @@ create table if not exists public.orders (
   order_status text not null check (order_status in ('Submitted', 'Confirmed', 'Ready for Pickup', 'Completed', 'Cancelled')),
   payment_reference_notes text,
   admin_notes text,
+  order_received_email_sent_at timestamptz,
+  payment_verified_email_sent_at timestamptz,
+  last_email_error text,
   created_at timestamptz not null default now(),
   unique (batch_id, order_sequence)
 );
@@ -62,6 +66,10 @@ create table if not exists public.order_items (
 );
 
 alter table public.orders add column if not exists success_token text;
+alter table public.orders add column if not exists customer_email text;
+alter table public.orders add column if not exists order_received_email_sent_at timestamptz;
+alter table public.orders add column if not exists payment_verified_email_sent_at timestamptz;
+alter table public.orders add column if not exists last_email_error text;
 create unique index if not exists orders_success_token_key on public.orders (success_token) where success_token is not null;
 
 create table if not exists public.admin_users (

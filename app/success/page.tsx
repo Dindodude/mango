@@ -33,7 +33,7 @@ export default async function SuccessPage({ searchParams }: { searchParams: { or
             <CheckCircle2 className="h-7 w-7" />
           </div>
           <h1 className="mt-5 text-3xl font-black text-stone-950">Order received.</h1>
-          <p className="mt-3 leading-7 text-stone-700">Thank you for your preorder. We will check your payment and confirm soon.</p>
+          <p className="mt-3 leading-7 text-stone-700">Thank you for your preorder. We will email your order details and check your payment soon.</p>
           {order && (
             <div className="mt-6 space-y-4">
               <div className="rounded-lg border border-mango-100 bg-mango-50 p-4">

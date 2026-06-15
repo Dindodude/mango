@@ -1,6 +1,6 @@
 "use client";
 
-import { useFormState } from "react-dom";
+import { useActionState } from "react";
 import { saveProduct, type AdminActionState } from "@/app/actions";
 import { productCategories } from "@/lib/constants";
 import { money } from "@/lib/utils";
@@ -9,20 +9,35 @@ import { AdminFormButton } from "@/components/admin-form-button";
 const initialState: AdminActionState = { ok: false, message: "" };
 
 export function AdminProductForm({ product }: { product?: any }) {
-  const [state, formAction] = useFormState(saveProduct, initialState);
+  const [state, formAction] = useActionState(saveProduct, initialState);
 
   return (
     <form action={formAction} className="mt-4 grid gap-3 sm:grid-cols-2">
       <input type="hidden" name="id" value={product?.id ?? ""} />
-      <input name="name" defaultValue={product?.name} placeholder="Name" required className="field" />
-      <select name="category" defaultValue={product?.category ?? productCategories[0]} className="field">
-        {productCategories.map((category) => (
-          <option key={category}>{category}</option>
-        ))}
-      </select>
-      <input name="selling_price" type="number" step="0.01" defaultValue={product?.selling_price ?? ""} placeholder="Selling price" required className="field" />
-      <input name="cost_price" type="number" step="0.01" defaultValue={product?.cost_price ?? ""} placeholder="Cost price" required className="field" />
-      <textarea name="description" defaultValue={product?.description ?? ""} placeholder="Description" className="field sm:col-span-2" />
+      <label>
+        <span className="label mb-1.5 block">Product name</span>
+        <input name="name" defaultValue={product?.name} placeholder="Sindri" required className="field" />
+      </label>
+      <label>
+        <span className="label mb-1.5 block">Category</span>
+        <select name="category" defaultValue={product?.category ?? productCategories[0]} className="field">
+          {productCategories.map((category) => (
+            <option key={category}>{category}</option>
+          ))}
+        </select>
+      </label>
+      <label>
+        <span className="label mb-1.5 block">Selling price</span>
+        <input name="selling_price" type="number" step="0.01" defaultValue={product?.selling_price ?? ""} placeholder="26" required className="field" />
+      </label>
+      <label>
+        <span className="label mb-1.5 block">Cost price</span>
+        <input name="cost_price" type="number" step="0.01" defaultValue={product?.cost_price ?? ""} placeholder="23" required className="field" />
+      </label>
+      <label className="sm:col-span-2">
+        <span className="label mb-1.5 block">Description</span>
+        <textarea name="description" defaultValue={product?.description ?? ""} placeholder="Optional customer-facing description" className="field" />
+      </label>
       <label className="flex items-center gap-2 rounded-md border border-stone-200 bg-stone-50 px-3 py-2 text-sm font-bold text-stone-700">
         <input type="checkbox" name="active" defaultChecked={product?.active ?? true} /> Active
       </label>

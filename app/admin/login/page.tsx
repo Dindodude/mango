@@ -1,13 +1,13 @@
 "use client";
 
-import { useFormState } from "react-dom";
+import { useActionState } from "react";
 import { LockKeyhole, Sprout } from "lucide-react";
 import { loginAdmin, type ActionState } from "@/app/actions";
 
 const initialState: ActionState = { ok: false, message: "" };
 
 export default function AdminLoginPage() {
-  const [state, formAction] = useFormState(loginAdmin, initialState);
+  const [state, formAction] = useActionState(loginAdmin, initialState);
   return (
     <main className="grid min-h-screen place-items-center bg-stone-950 px-4 py-10">
       <form action={formAction} className="w-full max-w-sm rounded-lg border border-white/10 bg-white p-6 shadow-lift">

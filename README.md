@@ -8,8 +8,9 @@ Full-stack Next.js preorder system for seasonal mango batches. Customers do not 
 - E-transfer confirmation flow with simple customer language
 - Supabase-backed orders, order items, batches, products, admin users, reports
 - Server-side checkout so totals, costs, profits, and order numbers are generated safely before saving to Supabase
+- Automatic customer emails for order received and payment verified confirmations using Resend
 - Per-batch order numbers like `JUN-W1-2026-001`
-- Admin dashboard, product management, batch management, order management, detail view, reports, CSV exports
+- Admin dashboard, product management, batch management, order management, supplier summaries, pickup lists, reports, CSV exports
 - Direct admin login using secure HTTP-only session cookies and a hashed password
 - Security headers, admin rate limiting, and admin audit logs
 - RLS enabled on every table
@@ -34,6 +35,8 @@ ADMIN_EMAIL=admin@example.com
 ADMIN_PASSWORD_HASH=pbkdf2_sha256$310000$replace-with-salt$replace-with-hash
 ADMIN_SESSION_SECRET=use-a-long-random-secret
 ADMIN_ROLE=owner
+RESEND_API_KEY=your-resend-api-key
+EMAIL_FROM=Mango Preorders <orders@yourdomain.com>
 ```
 
 Use the base Supabase project URL only, for example `https://abcxyz.supabase.co`. Do not paste a REST endpoint like `/rest/v1`.
@@ -45,6 +48,8 @@ npm run hash-admin-password
 ```
 
 Paste only the generated hash into Vercel or `.env.local`. Do not commit real `.env` files, passwords, service role keys, or Supabase secrets to GitHub.
+
+For email, create a Resend API key and add it as `RESEND_API_KEY`. Set `EMAIL_FROM` to a verified sender/domain in Resend. If Resend is not configured, orders still save, but email errors are recorded for admin review.
 
 3. In Supabase SQL Editor, run:
 
@@ -68,6 +73,7 @@ Open `http://localhost:3000`.
 - RLS is enabled for `batches`, `products`, `orders`, `order_items`, `admin_users`, `reports`, `admin_login_attempts`, and `admin_audit_logs`.
 - Public users can read active batch/product information.
 - Public checkout submits to a protected server action. The backend recalculates totals, costs, profits, and order numbers before saving with the Supabase service role key.
+- Checkout stores customer email for order confirmations.
 - Public users cannot read orders, cost, profit, admin notes, or dashboard data.
 - Admin pages require the direct admin session cookie. Admin database reads/writes use the Supabase service role key on the server only.
 - Only one batch can be active because of a partial unique index.
@@ -81,6 +87,7 @@ Open `http://localhost:3000`.
 3. Add the same environment variables from `.env.example`.
 4. Deploy.
 5. Open `/admin/login` and sign in with `ADMIN_EMAIL` and the original password used to generate `ADMIN_PASSWORD_HASH`.
+6. After schema changes, rerun `supabase/schema.sql` in Supabase SQL Editor before testing checkout.
 
 ## Customer Flow
 

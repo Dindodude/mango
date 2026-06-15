@@ -31,17 +31,43 @@ function orderItems(order: any) {
   return order.order_items?.map((item: any) => `${item.product_name_snapshot} x${item.quantity}`).join("; ") ?? "";
 }
 
+function supplierRows(orders: any[]) {
+  const totals = new Map<string, { product: string; quantity: number; revenue: number; profit: number }>();
+  orders.forEach((order) => {
+    order.order_items?.forEach((item: any) => {
+      const key = item.product_name_snapshot;
+      const current = totals.get(key) ?? { product: key, quantity: 0, revenue: 0, profit: 0 };
+      current.quantity += Number(item.quantity);
+      current.revenue += Number(item.line_total);
+      current.profit += Number(item.line_profit);
+      totals.set(key, current);
+    });
+  });
+  return [...totals.values()].sort((a, b) => a.product.localeCompare(b.product));
+}
+
+async function batchOrders(supabase: ReturnType<typeof createAdminClient>, batchId: string, paidOnly = false) {
+  let query = supabase
+    .from("orders")
+    .select("*,order_items(product_name_snapshot,quantity,line_total,line_profit)")
+    .eq("batch_id", batchId)
+    .neq("order_status", "Cancelled")
+    .order("created_at", { ascending: false });
+  if (paidOnly) query = query.eq("payment_status", "Payment Verified");
+  return query;
+}
+
 export async function GET(request: Request, context: { params: Promise<{ type: string }> }) {
   const admin = await requireAdmin();
   const supabase = createAdminClient();
   const params = await context.params;
   const exportType = params.type;
 
-  if (!["all", "unpaid", "batch-paid"].includes(exportType)) {
+  if (!["all", "orders", "unpaid", "batch-paid", "supplier", "pickup", "problem"].includes(exportType)) {
     return new NextResponse("Unknown export type", { status: 404 });
   }
 
-  if (exportType === "batch-paid") {
+  if (["batch-paid", "supplier", "pickup", "problem"].includes(exportType)) {
     const rawBatchId = new URL(request.url).searchParams.get("batchId");
     let batchId = "";
     try {
@@ -52,15 +78,37 @@ export async function GET(request: Request, context: { params: Promise<{ type: s
     if (!batchId) return new NextResponse("Missing batchId", { status: 400 });
 
     const { data: batch } = await supabase.from("batches").select("batch_code,batch_name").eq("id", batchId).maybeSingle();
-    const { data: orders } = await supabase
-      .from("orders")
-      .select("*,order_items(product_name_snapshot,quantity,line_total,line_profit)")
-      .eq("batch_id", batchId)
-      .eq("payment_status", "Payment Verified")
-      .neq("order_status", "Cancelled")
-      .order("created_at", { ascending: false });
+    const { data: orders } = await batchOrders(supabase, batchId, exportType !== "problem");
+    const scopedOrders = exportType === "problem"
+      ? (orders ?? []).filter((order) => order.payment_status !== "Payment Verified" || order.order_status === "Submitted")
+      : orders ?? [];
 
-    const paidOrders = orders ?? [];
+    if (exportType === "supplier") {
+      const rows = supplierRows(scopedOrders);
+      let csv = "product,total_quantity,total_revenue,total_profit,supplier_text\n";
+      csv += rows.map((row) => [row.product, row.quantity, row.revenue, row.profit, `${row.product}: ${row.quantity}`].map(csvEscape).join(",")).join("\n");
+      const fileCode = (batch?.batch_code ?? "batch").toLowerCase().replace(/[^a-z0-9-]+/g, "-");
+      await logAdminAction({ adminEmail: admin.email, action: "export.supplier", entityType: "batch", entityId: batchId, metadata: { rows: rows.length } });
+      return csvResponse(csv, `${fileCode}-supplier-summary.csv`);
+    }
+
+    if (exportType === "pickup") {
+      let csv = "order_number,customer_name,phone,email,items,total_paid,order_status\n";
+      csv += scopedOrders.map((order) => [order.order_number, order.customer_name, order.phone, order.customer_email, orderItems(order), order.total_amount, order.order_status].map(csvEscape).join(",")).join("\n");
+      const fileCode = (batch?.batch_code ?? "batch").toLowerCase().replace(/[^a-z0-9-]+/g, "-");
+      await logAdminAction({ adminEmail: admin.email, action: "export.pickup", entityType: "batch", entityId: batchId, metadata: { rows: scopedOrders.length } });
+      return csvResponse(csv, `${fileCode}-pickup-list.csv`);
+    }
+
+    if (exportType === "problem") {
+      let csv = "order_number,customer_name,phone,email,items,total_amount,payment_status,order_status,created_at\n";
+      csv += scopedOrders.map((order) => [order.order_number, order.customer_name, order.phone, order.customer_email, orderItems(order), order.total_amount, order.payment_status, order.order_status, order.created_at].map(csvEscape).join(",")).join("\n");
+      const fileCode = (batch?.batch_code ?? "batch").toLowerCase().replace(/[^a-z0-9-]+/g, "-");
+      await logAdminAction({ adminEmail: admin.email, action: "export.problem", entityType: "batch", entityId: batchId, metadata: { rows: scopedOrders.length } });
+      return csvResponse(csv, `${fileCode}-problem-orders.csv`);
+    }
+
+    const paidOrders = scopedOrders;
     const totalMoney = paidOrders.reduce((sum, order) => sum + Number(order.total_amount), 0);
     const totalProfit = paidOrders.reduce((sum, order) => sum + Number(order.total_profit), 0);
     const totalQuantity = paidOrders.reduce(
@@ -81,13 +129,14 @@ export async function GET(request: Request, context: { params: Promise<{ type: s
     ]
       .map((row) => row.map(csvEscape).join(","))
       .join("\n");
-    csv += "\n\norder_number,customer_name,phone,items,total_amount,total_profit,payment_status,order_status,created_at\n";
+    csv += "\n\norder_number,customer_name,phone,email,items,total_amount,total_profit,payment_status,order_status,created_at\n";
     csv += paidOrders
       .map((order) =>
         [
           order.order_number,
           order.customer_name,
           order.phone,
+          order.customer_email,
           orderItems(order),
           order.total_amount,
           order.total_profit,
@@ -120,7 +169,7 @@ export async function GET(request: Request, context: { params: Promise<{ type: s
     return true;
   });
 
-  let csv = "order_number,batch,customer_name,phone,items,total_amount,total_cost,total_profit,payment_status,order_status,created_at\n";
+  let csv = "order_number,batch,customer_name,phone,email,items,total_amount,total_cost,total_profit,payment_status,order_status,created_at\n";
   csv += rows
     .map((order) =>
       [
@@ -128,6 +177,7 @@ export async function GET(request: Request, context: { params: Promise<{ type: s
         order.batches?.batch_name,
         order.customer_name,
         order.phone,
+        order.customer_email,
         orderItems(order),
         order.total_amount,
         order.total_cost,

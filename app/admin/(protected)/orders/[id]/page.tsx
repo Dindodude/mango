@@ -1,5 +1,6 @@
-import { Copy, CreditCard, PackageCheck, Save } from "lucide-react";
+import { Copy, CreditCard, Mail, PackageCheck, Save } from "lucide-react";
 import { updateOrder } from "@/app/actions";
+import { StatusBadge } from "@/components/admin-ui";
 import { orderStatuses, paymentStatuses, PICKUP_ADDRESS } from "@/lib/constants";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { money } from "@/lib/utils";
@@ -23,6 +24,7 @@ export default async function OrderDetailPage({ params }: { params: { id: string
           <p className="mt-1 text-sm font-semibold text-stone-600">
             {order.customer_name} - {order.phone}
           </p>
+          {order.customer_email && <p className="mt-1 text-sm font-semibold text-stone-500">{order.customer_email}</p>}
         </div>
         <div className="flex flex-wrap gap-2">
           <StatusBadge status={order.payment_status} />
@@ -60,6 +62,15 @@ export default async function OrderDetailPage({ params }: { params: { id: string
             <Row label="Batch" value={order.batches?.batch_name} />
             <Row label="Customer notes" value={order.notes || "None"} />
           </div>
+          <div className="mt-4 rounded-lg border border-leaf-100 bg-leaf-50 p-4 text-sm">
+            <div className="mb-3 flex items-center gap-2">
+              <Mail className="h-4 w-4 text-leaf-700" />
+              <h3 className="font-black text-stone-950">Email Status</h3>
+            </div>
+            <Row label="Order received email" value={order.order_received_email_sent_at ? "Sent" : "Not sent"} />
+            <Row label="Payment verified email" value={order.payment_verified_email_sent_at ? "Sent" : "Not sent"} />
+            {order.last_email_error && <Row label="Last email error" value={order.last_email_error} />}
+          </div>
           <div className="mt-5">
             <div className="mb-2 flex items-center gap-2">
               <Copy className="h-4 w-4 text-leaf-700" />
@@ -95,6 +106,7 @@ export default async function OrderDetailPage({ params }: { params: { id: string
           <div className="mt-4 grid gap-2 sm:grid-cols-2">
             <button name="payment_status" value="Payment Verified" className="btn-primary">Verify Payment</button>
             <button name="payment_status" value="Payment Issue" className="inline-flex min-h-11 items-center justify-center rounded-md bg-amber-600 px-3 py-2 text-sm font-bold text-white transition hover:bg-amber-700">Payment Not Found</button>
+            <button name="order_status" value="Confirmed" className="btn-secondary">Mark Confirmed</button>
             <button name="order_status" value="Ready for Pickup" className="btn-secondary">Mark Ready</button>
             <button name="order_status" value="Completed" className="btn-secondary">Mark Completed</button>
           </div>
@@ -115,14 +127,4 @@ function Row({ label, value, strong = false, good = false }: { label: string; va
       <span className={`text-right font-bold ${strong ? "text-stone-950" : ""} ${good ? "text-leaf-700" : ""}`}>{value}</span>
     </div>
   );
-}
-
-function StatusBadge({ status }: { status: string }) {
-  if (status.includes("Verified") || status.includes("Completed") || status.includes("Confirmed")) {
-    return <span className="badge-good">{status}</span>;
-  }
-  if (status.includes("Issue") || status.includes("Claimed") || status.includes("Awaiting")) {
-    return <span className="badge-warm">{status}</span>;
-  }
-  return <span className="badge">{status}</span>;
 }

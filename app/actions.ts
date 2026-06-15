@@ -8,12 +8,14 @@ import { requireAdmin } from "@/lib/auth";
 import { isLoginRateLimited, loginAttemptKey, logAdminAction, recordLoginAttempt } from "@/lib/audit";
 import { clearDirectAdminSession, createDirectAdminSession, verifyDirectAdminCredentials } from "@/lib/admin-session";
 import { hasSupabaseAdminConfig } from "@/lib/env";
+import { sendOrderReceivedEmail, sendPaymentVerifiedEmail } from "@/lib/email";
 import { assertSameOrigin, parseUuid, requestIp } from "@/lib/security";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { cleanText } from "@/lib/utils";
 
 const checkoutSchema = z.object({
   customerName: z.string().min(2).max(120),
+  customerEmail: z.string().email().max(180),
   phone: z.string().min(7).max(30),
   notes: z.string().max(500).optional(),
   confirmedPaid: z.literal("on"),
@@ -141,6 +143,7 @@ export async function submitPreorder(_: ActionState, formData: FormData): Promis
 
   const parsed = checkoutSchema.safeParse({
     customerName: cleanText(formData.get("customerName"), 120),
+    customerEmail: cleanText(formData.get("customerEmail"), 180).toLowerCase(),
     phone: cleanText(formData.get("phone"), 30),
     notes: cleanText(formData.get("notes"), 500),
     confirmedPaid: formData.get("confirmedPaid"),
@@ -218,6 +221,7 @@ export async function submitPreorder(_: ActionState, formData: FormData): Promis
         order_number: newOrderNumber,
         success_token: successToken,
         customer_name: parsed.data.customerName,
+        customer_email: parsed.data.customerEmail,
         phone: parsed.data.phone,
         notes: parsed.data.notes ?? null,
         subtotal_amount: subtotal,
@@ -241,6 +245,21 @@ export async function submitPreorder(_: ActionState, formData: FormData): Promis
       await supabase.from("orders").delete().eq("id", order.id);
       return { ok: false, message: itemError.message };
     }
+
+    const emailResult = await sendOrderReceivedEmail({
+      orderNumber: order.order_number,
+      customerName: parsed.data.customerName,
+      customerEmail: parsed.data.customerEmail,
+      totalAmount: subtotal,
+      items: lines
+    });
+    await supabase
+      .from("orders")
+      .update({
+        order_received_email_sent_at: emailResult.sent ? new Date().toISOString() : null,
+        last_email_error: emailResult.error
+      })
+      .eq("id", order.id);
 
     redirect(`/success?order=${encodeURIComponent(order.order_number)}&token=${encodeURIComponent(successToken)}`);
   }
@@ -381,6 +400,11 @@ export async function updateOrder(formData: FormData) {
   const paymentStatus = paymentStatusSchema.parse(cleanText(paymentValues[paymentValues.length - 1], 60));
   const orderStatus = orderStatusSchema.parse(cleanText(orderValues[orderValues.length - 1], 60));
   const supabase = createAdminClient();
+  const { data: existingOrder } = await supabase
+    .from("orders")
+    .select("*,order_items(product_name_snapshot,quantity,line_total)")
+    .eq("id", orderId)
+    .maybeSingle();
 
   if (orderStatus === "Cancelled") {
     await supabase.from("orders").delete().eq("id", orderId);
@@ -396,7 +420,24 @@ export async function updateOrder(formData: FormData) {
     payload.payment_reference_notes = cleanText(formData.get("payment_reference_notes"), 700);
     payload.admin_notes = cleanText(formData.get("admin_notes"), 1000);
   }
-  await supabase.from("orders").update(payload).eq("id", orderId);
+  const emailUpdate: Record<string, string | null> = {};
+  if (
+    paymentStatus === "Payment Verified" &&
+    existingOrder?.customer_email &&
+    !existingOrder.payment_verified_email_sent_at
+  ) {
+    const emailResult = await sendPaymentVerifiedEmail({
+      orderNumber: existingOrder.order_number,
+      customerName: existingOrder.customer_name,
+      customerEmail: existingOrder.customer_email,
+      totalAmount: Number(existingOrder.total_amount),
+      items: existingOrder.order_items ?? []
+    });
+    emailUpdate.payment_verified_email_sent_at = emailResult.sent ? new Date().toISOString() : null;
+    emailUpdate.last_email_error = emailResult.error;
+  }
+
+  await supabase.from("orders").update({ ...payload, ...emailUpdate }).eq("id", orderId);
   await logAdminAction({
     adminEmail: admin.email,
     action: "order.update",

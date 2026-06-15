@@ -3,10 +3,12 @@
 import Link from "next/link";
 import { Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
 import { useCart } from "@/components/cart-provider";
+import { cartItemAccent, cartItemCode } from "@/lib/cart-visuals";
 import { money } from "@/lib/utils";
 
 export function CartView({ checkout = false }: { checkout?: boolean }) {
   const cart = useCart();
+  const itemCount = cart.items.reduce((sum, item) => sum + item.quantity, 0);
 
   if (!cart.items.length) {
     return (
@@ -26,11 +28,16 @@ export function CartView({ checkout = false }: { checkout?: boolean }) {
   return (
     <div className="space-y-3">
       {cart.items.map((item) => (
-        <div key={item.productId} className="surface p-4">
+        <div key={item.productId} className="surface p-4 transition hover:shadow-lift">
           <div className="flex items-start justify-between gap-3">
-            <div>
+            <div className="min-w-0">
+              <span className={`mb-2 inline-flex rounded-md border px-2 py-1 text-[11px] font-black uppercase tracking-wide ${cartItemAccent(item.productId)}`}>
+                {cartItemCode(item.productId, item.name)}
+              </span>
               <h3 className="font-black text-stone-950">{item.name}</h3>
-              <p className="text-sm text-stone-600">{money(item.price)} each</p>
+              <p className="text-sm text-stone-600">
+                {money(item.price)} each{item.category ? ` - ${item.category}` : ""}
+              </p>
             </div>
             <p className="font-black text-stone-950">{money(item.price * item.quantity)}</p>
           </div>
@@ -53,7 +60,7 @@ export function CartView({ checkout = false }: { checkout?: boolean }) {
           {checkout && <p className="mt-2 text-sm font-semibold text-stone-600">Quantity: {item.quantity}</p>}
         </div>
       ))}
-      <div className="rounded-lg bg-stone-950 p-5 text-white shadow-lift">
+      <div key={cart.total} className="rounded-lg bg-stone-950 p-5 text-white shadow-lift animate-total-pop">
         <div className="flex items-center justify-between text-sm">
           <span className="text-stone-300">Subtotal</span>
           <span className="font-semibold">{money(cart.total)}</span>
@@ -64,9 +71,22 @@ export function CartView({ checkout = false }: { checkout?: boolean }) {
         </div>
       </div>
       {!checkout && (
-        <Link href="/checkout" className="btn-accent w-full">
-          Checkout
-        </Link>
+        <>
+          <Link href="/checkout" className="btn-accent w-full">
+            Checkout
+          </Link>
+          <div className="fixed inset-x-3 bottom-3 z-40 rounded-lg border border-white/20 bg-stone-950 p-3 text-white shadow-lift sm:hidden">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-bold uppercase text-stone-400">{itemCount} items</p>
+                <p key={cart.total} className="text-lg font-black animate-total-pop">{money(cart.total)}</p>
+              </div>
+              <Link href="/checkout" className="btn-accent min-h-10 px-4 py-2">
+                Checkout
+              </Link>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );

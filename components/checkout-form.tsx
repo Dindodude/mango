@@ -1,7 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useFormState } from "react-dom";
+import { useActionState, useMemo, useState } from "react";
 import { CreditCard, ShieldCheck } from "lucide-react";
 import { submitPreorder, type ActionState } from "@/app/actions";
 import { useCart } from "@/components/cart-provider";
@@ -12,7 +11,7 @@ const initialState: ActionState = { ok: false, message: "" };
 
 export function CheckoutForm() {
   const cart = useCart();
-  const [state, formAction] = useFormState(submitPreorder, initialState);
+  const [state, formAction] = useActionState(submitPreorder, initialState);
   const [confirmed, setConfirmed] = useState(false);
   const itemsPayload = useMemo(
     () => JSON.stringify(cart.items.map((item) => ({ product_id: item.productId, quantity: item.quantity }))),
@@ -33,6 +32,10 @@ export function CheckoutForm() {
       <div>
         <label className="label">Full name</label>
         <input name="customerName" required className="field mt-1.5" placeholder="Your full name" />
+      </div>
+      <div>
+        <label className="label">Email address</label>
+        <input name="customerEmail" type="email" required className="field mt-1.5" placeholder="you@example.com" />
       </div>
       <div>
         <label className="label">Phone number</label>

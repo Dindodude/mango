@@ -1,12 +1,15 @@
-import { Download, LineChart, PackageSearch } from "lucide-react";
+import { Download, LineChart, PackageSearch, Truck } from "lucide-react";
+import { AdminSectionHeader } from "@/components/admin-ui";
+import { CopyButton } from "@/components/copy-button";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { money } from "@/lib/utils";
 
 export default async function ReportsPage() {
   const supabase = createAdminClient();
-  const [{ data: orders }, { data: items }] = await Promise.all([
-    supabase.from("orders").select("*,batches(batch_name)").neq("order_status", "Cancelled").order("created_at", { ascending: false }),
-    supabase.from("order_items").select("*,orders!inner(order_status)").neq("orders.order_status", "Cancelled")
+  const [{ data: orders }, { data: items }, { data: activeBatch }] = await Promise.all([
+    supabase.from("orders").select("*,batches(id,batch_name)").neq("order_status", "Cancelled").order("created_at", { ascending: false }),
+    supabase.from("order_items").select("*,orders!inner(payment_status,order_status,batch_id,batches(batch_name))").eq("orders.payment_status", "Payment Verified").neq("orders.order_status", "Cancelled"),
+    supabase.from("batches").select("*").eq("status", "Active").maybeSingle()
   ]);
 
   const byBatch = Object.values((orders ?? []).reduce<Record<string, any>>((acc, order) => {
@@ -19,34 +22,46 @@ export default async function ReportsPage() {
     return acc;
   }, {}));
 
-  const byProduct = Object.values((items ?? []).reduce<Record<string, any>>((acc, item) => {
-    const key = item.product_name_snapshot;
-    acc[key] ??= { name: key, quantity: 0, revenue: 0, profit: 0 };
+  const supplier = Object.values((items ?? []).reduce<Record<string, any>>((acc, item) => {
+    const key = `${item.orders?.batches?.batch_name ?? "No batch"}-${item.product_name_snapshot}`;
+    acc[key] ??= { batch: item.orders?.batches?.batch_name ?? "No batch", name: item.product_name_snapshot, quantity: 0, revenue: 0, profit: 0 };
     acc[key].quantity += Number(item.quantity);
     acc[key].revenue += Number(item.line_total);
     acc[key].profit += Number(item.line_profit);
     return acc;
-  }, {}));
+  }, {})).sort((a, b) => a.batch.localeCompare(b.batch) || b.quantity - a.quantity);
+
+  const activeSupplier = supplier.filter((row: any) => !activeBatch || row.batch === activeBatch.batch_name);
+  const supplierText = activeSupplier.map((row: any) => `${row.name}: ${row.quantity}`).join("\n");
 
   return (
     <div className="admin-shell">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="eyebrow">Analytics</p>
-          <h1 className="mt-2 text-3xl font-black text-stone-950 sm:text-4xl">Reports</h1>
-          <p className="mt-1 text-sm font-semibold text-stone-600">Revenue, profit, supplier summaries, and unpaid exports.</p>
-        </div>
+        <AdminSectionHeader eyebrow="Analytics" title="Reports" description="Revenue, profit, supplier summaries, and exports." />
         <div className="flex flex-wrap gap-2">
-          {["orders", "unpaid", "supplier", "profit", "batches"].map((type) => (
+          {["orders", "unpaid"].map((type) => (
             <a key={type} href={`/api/admin/export/${type}`} className="btn-secondary min-h-10 px-3 py-2 capitalize">
               <Download className="h-4 w-4" /> {type}
             </a>
           ))}
+          {activeBatch && <a href={`/api/admin/export/supplier?batchId=${activeBatch.id}`} className="btn-primary min-h-10 px-3 py-2"><Truck className="h-4 w-4" /> Supplier CSV</a>}
         </div>
       </div>
+
+      <section className="surface mt-5 p-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="font-black text-stone-950">Supplier Summary</h2>
+            <p className="mt-1 text-sm font-semibold text-stone-600">Verified paid orders only{activeBatch ? ` for ${activeBatch.batch_name}` : ""}.</p>
+          </div>
+          <CopyButton label="Supplier text" value={supplierText || "No supplier items yet."} />
+        </div>
+        <pre className="mt-4 whitespace-pre-wrap rounded-lg border border-stone-200 bg-stone-50 p-4 text-sm font-semibold text-stone-800">{supplierText || "No supplier items yet."}</pre>
+      </section>
+
       <div className="mt-5 grid gap-5 lg:grid-cols-2">
         <ReportTable icon={<LineChart className="h-5 w-5 text-leaf-700" />} title="Revenue by Batch" rows={byBatch} columns={["name", "orders", "revenue", "profit", "outstanding"]} />
-        <ReportTable icon={<PackageSearch className="h-5 w-5 text-leaf-700" />} title="Profit by Product" rows={byProduct} columns={["name", "quantity", "revenue", "profit"]} />
+        <ReportTable icon={<PackageSearch className="h-5 w-5 text-leaf-700" />} title="Supplier / Profit by Product" rows={supplier} columns={["batch", "name", "quantity", "revenue", "profit"]} />
       </div>
     </div>
   );
@@ -60,13 +75,11 @@ function ReportTable({ icon, title, rows, columns }: { icon: React.ReactNode; ti
         {icon}
       </div>
       <div className="overflow-x-auto">
-        <table className="data-table min-w-[520px]">
-          <thead>
-            <tr>{columns.map((column) => <th key={column}>{column}</th>)}</tr>
-          </thead>
+        <table className="data-table min-w-[620px]">
+          <thead><tr>{columns.map((column) => <th key={column}>{column}</th>)}</tr></thead>
           <tbody>
             {rows.map((row) => (
-              <tr key={row.name}>
+              <tr key={`${row.batch ?? ""}-${row.name}`}>
                 {columns.map((column) => (
                   <td key={column} className={column === "profit" ? "font-bold text-leaf-700" : ""}>
                     {["revenue", "profit", "outstanding"].includes(column) ? money(row[column]) : row[column]}
@@ -74,13 +87,7 @@ function ReportTable({ icon, title, rows, columns }: { icon: React.ReactNode; ti
                 ))}
               </tr>
             ))}
-            {!rows.length && (
-              <tr>
-                <td colSpan={columns.length} className="py-10 text-center font-semibold text-stone-500">
-                  No report data yet.
-                </td>
-              </tr>
-            )}
+            {!rows.length && <tr><td colSpan={columns.length} className="py-10 text-center font-semibold text-stone-500">No report data yet.</td></tr>}
           </tbody>
         </table>
       </div>
