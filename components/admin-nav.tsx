@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { BarChart3, Boxes, ClipboardList, Layers3, LogOut, Sprout } from "lucide-react";
+import { BarChart3, Boxes, ClipboardList, Layers3, LogOut, Sprout, UsersRound } from "lucide-react";
 import { logoutAdmin } from "@/app/actions";
 
 export function AdminNav({ role }: { role: string }) {
   const links = [
     { href: "/admin/orders", label: "Orders", icon: ClipboardList },
+    { href: "/admin/customers", label: "Customers", icon: UsersRound },
     { href: "/admin/products", label: "Products", icon: Boxes },
     { href: "/admin/batches", label: "Batches", icon: Layers3 },
     { href: "/admin/reports", label: "Reports", icon: BarChart3 }

@@ -72,9 +72,11 @@ export function CartView({ checkout = false }: { checkout?: boolean }) {
       </div>
       {!checkout && (
         <>
-          <Link href="/checkout" className="btn-accent w-full">
-            Checkout
-          </Link>
+          <div className="grid gap-2 sm:grid-cols-3">
+            <Link href="/preorder" className="btn-secondary">Continue shopping</Link>
+            <button type="button" onClick={cart.clear} className="btn-secondary">Clear cart</button>
+            <Link href="/checkout" className="btn-accent">Checkout</Link>
+          </div>
           <div className="fixed inset-x-3 bottom-3 z-40 rounded-lg border border-white/20 bg-stone-950 p-3 text-white shadow-lift sm:hidden">
             <div className="flex items-center justify-between gap-3">
               <div>

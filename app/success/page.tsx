@@ -4,20 +4,23 @@ import { CopyButton } from "@/components/copy-button";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { ETRANSFER_EMAIL, PICKUP_ADDRESS } from "@/lib/constants";
+import { getCustomerSession } from "@/lib/customer";
 import { hasSupabaseAdminConfig } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { money } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
-export default async function SuccessPage({ searchParams }: { searchParams: { order?: string; token?: string } }) {
-  const orderNumber = searchParams.order ?? "";
-  const token = searchParams.token ?? "";
+export default async function SuccessPage({ searchParams }: { searchParams: Promise<{ order?: string; token?: string }> }) {
+  const resolvedSearchParams = await searchParams;
+  const session = await getCustomerSession();
+  const orderNumber = resolvedSearchParams.order ?? "";
+  const token = resolvedSearchParams.token ?? "";
   const order = hasSupabaseAdminConfig() && orderNumber && token
     ? (
         await createAdminClient()
           .from("orders")
-          .select("order_number,total_amount,order_items(product_name_snapshot,quantity,line_total)")
+          .select("order_number,customer_email,total_amount,order_items(product_name_snapshot,quantity,line_total)")
           .eq("order_number", orderNumber)
           .eq("success_token", token)
           .maybeSingle()
@@ -63,6 +66,13 @@ export default async function SuccessPage({ searchParams }: { searchParams: { or
                 <CopyButton label="E-transfer email" value={ETRANSFER_EMAIL} />
                 <CopyButton label="Total amount" value={money(order.total_amount)} />
               </div>
+              {!session.user && order.customer_email && (
+                <div className="rounded-lg border border-leaf-100 bg-leaf-50 p-4">
+                  <p className="font-black text-stone-950">Want to track this later?</p>
+                  <p className="mt-1 text-sm leading-6 text-stone-700">Create an account with {order.customer_email} and this order will show in My orders after email verification.</p>
+                  <Link href="/account/signup" className="btn-secondary mt-4">Create account</Link>
+                </div>
+              )}
             </div>
           )}
           <Link href="/" className="btn-primary mt-6">

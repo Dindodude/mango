@@ -1,8 +1,10 @@
 import Link from "next/link";
-import { Leaf, MessageCircle, ShoppingBasket } from "lucide-react";
+import { Leaf, MessageCircle, ShoppingBasket, UserRound } from "lucide-react";
 import { CONTACT_PHONE_DIGITS, CONTACT_PHONE_E164 } from "@/lib/constants";
+import { getCustomerSession } from "@/lib/customer";
 
-export function SiteHeader() {
+export async function SiteHeader() {
+  const session = await getCustomerSession();
   return (
     <header className="sticky top-0 z-40 border-b border-stone-200/80 bg-white/88 backdrop-blur-xl">
       <div className="shell flex items-center justify-between py-3">
@@ -16,6 +18,10 @@ export function SiteHeader() {
         <nav className="flex items-center gap-1.5 text-sm">
           <Link href="/preorder" className="rounded-md px-3 py-2 font-bold text-stone-700 transition hover:bg-leaf-50 hover:text-leaf-700">
             Preorder
+          </Link>
+          <Link href={session.user ? "/account" : "/account/login"} className="rounded-md px-3 py-2 font-bold text-stone-700 transition hover:bg-leaf-50 hover:text-leaf-700">
+            <span className="hidden sm:inline">{session.user ? "My orders" : "Sign in"}</span>
+            <UserRound className="h-5 w-5 sm:hidden" />
           </Link>
           <Link href="/cart" className="rounded-md border border-stone-200 bg-white p-2 shadow-crisp transition hover:bg-mango-50" aria-label="Cart">
             <ShoppingBasket className="h-5 w-5" />

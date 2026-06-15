@@ -28,6 +28,12 @@ export function SiteFooter() {
             WhatsApp
           </a>
           <Link
+            href="/account"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-white/15 px-4 py-2.5 text-sm font-bold text-stone-200 transition hover:bg-white/10 hover:text-white"
+          >
+            My orders
+          </Link>
+          <Link
             href="/admin/login"
             className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-white/15 px-4 py-2.5 text-sm font-bold text-stone-200 transition hover:bg-white/10 hover:text-white"
           >

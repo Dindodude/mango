@@ -7,6 +7,7 @@ export function CopyButton({ value, label }: { value: string; label: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <button
+      type="button"
       className="flex items-center justify-between gap-3 rounded-md border border-stone-200 bg-white px-3 py-2.5 text-sm shadow-crisp transition hover:bg-leaf-50"
       onClick={async () => {
         await navigator.clipboard.writeText(value);

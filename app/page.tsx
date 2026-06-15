@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarDays, Clock, CreditCard, MapPin, MessageCircle, ShieldCheck, ShoppingBasket, Truck } from "lucide-react";
+import { CalendarDays, Clock, CreditCard, MapPin, MessageCircle, ShieldCheck, ShoppingBasket, Truck, UserRound } from "lucide-react";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { hasSupabaseConfig } from "@/lib/env";
@@ -15,19 +15,19 @@ export default async function HomePage() {
   return (
     <main>
       <SiteHeader />
-      <section className="relative overflow-hidden border-b border-stone-200 bg-[#f8f3df]">
+      <section className="relative overflow-hidden border-b border-stone-200 bg-[#f7f5ee]">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(245,166,35,0.24),transparent_34%),radial-gradient(circle_at_85%_18%,rgba(47,93,39,0.14),transparent_30%)]" />
-        <div className="shell relative grid min-h-[72svh] gap-10 py-14 md:grid-cols-[1.05fr_0.95fr] md:items-center">
+        <div className="shell relative grid min-h-[68svh] gap-10 py-12 md:grid-cols-[1.05fr_0.95fr] md:items-center">
           <div className="max-w-2xl">
             <div className="inline-flex items-center gap-2 rounded-md border border-leaf-100 bg-white/70 px-3 py-1.5 text-xs font-black uppercase tracking-[0.18em] text-leaf-700 shadow-crisp">
               <Clock className="h-4 w-4 text-mango-300" />
               Seasonal preorder
             </div>
             <h1 className="mt-5 max-w-3xl text-4xl font-black leading-[1.02] text-stone-950 md:text-6xl">
-              Fresh mangoes, preordered in minutes.
+              Preorder fruit without the back and forth.
             </h1>
             <p className="mt-5 max-w-xl text-base leading-7 text-stone-700 md:text-lg">
-              Choose your items, send e-transfer, and submit your preorder. We check payment and confirm soon.
+              Choose items, pay by e-transfer, and track your order from the same simple account.
             </p>
             <div className="mt-7 flex flex-col gap-3 sm:flex-row">
               <Link href="/preorder" className="btn-accent">
@@ -38,12 +38,16 @@ export default async function HomePage() {
                 <MessageCircle className="h-4 w-4" />
                 Text us
               </a>
+              <Link href="/account" className="btn-secondary">
+                <UserRound className="h-4 w-4" />
+                My orders
+              </Link>
             </div>
             <p className="mt-5 max-w-lg text-sm font-semibold text-stone-600">
               This is a preorder request. Your order is not confirmed until payment is checked.
             </p>
           </div>
-          <div className="grid gap-3">
+          <div className="grid gap-3 rounded-xl border border-stone-200 bg-white p-3 shadow-lift">
             <div className="surface p-5 shadow-lift">
               <span className={activeBatch ? "badge-good" : "badge-warm"}>{activeBatch ? "Open now" : "Closed"}</span>
               <h2 className="mt-4 text-2xl font-black text-stone-950">{activeBatch ? activeBatch.batch_name : "No active preorder"}</h2>
@@ -62,6 +66,11 @@ export default async function HomePage() {
                 <p className="mt-3 text-xs font-black uppercase tracking-wide text-stone-500">Pickup</p>
                 <p className="mt-1 font-black text-stone-950">{PICKUP_ADDRESS}</p>
               </div>
+            </div>
+            <div className="surface-muted p-4">
+              <UserRound className="h-5 w-5 text-leaf-700" />
+              <p className="mt-3 text-xs font-black uppercase tracking-wide text-stone-500">Account</p>
+              <p className="mt-1 font-black text-stone-950">Optional order history</p>
             </div>
           </div>
         </div>
@@ -125,7 +134,7 @@ export default async function HomePage() {
             <p className="eyebrow">Fresh batches</p>
             <h2 className="mt-2 text-3xl font-black text-stone-950">Built for seasonal mango runs.</h2>
             <p className="mt-3 leading-7 text-stone-600">
-              Preorders open in batches every one to two weeks. No stock counters, no accounts, and no complicated checkout.
+              Preorders open in batches every one to two weeks. Guest checkout stays fast, and optional accounts save order history.
             </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-3">

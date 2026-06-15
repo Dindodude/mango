@@ -2,6 +2,7 @@
 
 import crypto from "crypto";
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth";
@@ -11,6 +12,7 @@ import { hasSupabaseAdminConfig } from "@/lib/env";
 import { sendOrderReceivedEmail, sendPaymentVerifiedEmail } from "@/lib/email";
 import { assertSameOrigin, parseUuid, requestIp } from "@/lib/security";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient as createServerSupabaseClient } from "@/lib/supabase/server";
 import { cleanText } from "@/lib/utils";
 
 const checkoutSchema = z.object({
@@ -41,6 +43,17 @@ const batchSchema = z.object({
 
 const paymentStatusSchema = z.enum(["Awaiting Payment", "Payment Claimed by Customer", "Payment Verified", "Payment Issue", "Refunded"]);
 const orderStatusSchema = z.enum(["Submitted", "Confirmed", "Ready for Pickup", "Completed", "Cancelled"]);
+const customerAuthSchema = z.object({
+  email: z.string().email().max(180),
+  password: z.string().min(6).max(100),
+  fullName: z.string().max(120).optional(),
+  phone: z.string().max(30).optional()
+});
+
+const customerProfileSchema = z.object({
+  fullName: z.string().min(2).max(120),
+  phone: z.string().min(7).max(30)
+});
 
 export type ActionState = { ok: boolean; message: string; orderId?: string; orderNumber?: string };
 export type AdminActionState = { ok: boolean; message: string };
@@ -50,6 +63,11 @@ function adminErrorMessage(message: string) {
     return "Supabase URL should look like https://your-project.supabase.co. Remove anything after .co in Vercel, then redeploy.";
   }
   return message;
+}
+
+async function requestOrigin() {
+  const headerStore = await headers();
+  return headerStore.get("origin") ?? process.env.NEXT_PUBLIC_SITE_URL ?? "";
 }
 
 function todayIso() {
@@ -122,6 +140,109 @@ function batchNameFromDate(isoDate: string) {
   return `${date.toLocaleString("en-US", { month: "long", timeZone: "UTC" })} ${date.getUTCDate()} ${date.getUTCFullYear()} preorder`;
 }
 
+export async function signUpCustomer(_: ActionState, formData: FormData): Promise<ActionState> {
+  try {
+    await assertSameOrigin();
+    const parsed = customerAuthSchema.safeParse({
+      email: cleanText(formData.get("email"), 180).toLowerCase(),
+      password: String(formData.get("password") ?? ""),
+      fullName: cleanText(formData.get("fullName"), 120),
+      phone: cleanText(formData.get("phone"), 30)
+    });
+    if (!parsed.success) return { ok: false, message: "Please enter your email, password, name, and phone." };
+
+    const supabase = await createServerSupabaseClient();
+    const origin = await requestOrigin();
+    const { data, error } = await supabase.auth.signUp({
+      email: parsed.data.email,
+      password: parsed.data.password,
+      options: {
+        emailRedirectTo: origin ? `${origin}/auth/callback?next=/account` : undefined,
+        data: {
+          full_name: parsed.data.fullName ?? "",
+          phone: parsed.data.phone ?? ""
+        }
+      }
+    });
+    if (error) return { ok: false, message: "Signup failed. Please check your email and password." };
+
+    if (data.user) {
+      await createAdminClient()
+        .from("customer_profiles")
+        .upsert({
+          user_id: data.user.id,
+          email: parsed.data.email,
+          full_name: parsed.data.fullName ?? null,
+          phone: parsed.data.phone ?? null,
+          updated_at: new Date().toISOString()
+        }, { onConflict: "user_id" });
+    }
+
+    return { ok: true, message: "Account created. Please check your email to verify your account." };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : "Signup failed. Please try again." };
+  }
+}
+
+export async function loginCustomer(_: ActionState, formData: FormData): Promise<ActionState> {
+  let shouldRedirect = false;
+  try {
+    await assertSameOrigin();
+    const parsed = customerAuthSchema.pick({ email: true, password: true }).safeParse({
+      email: cleanText(formData.get("email"), 180).toLowerCase(),
+      password: String(formData.get("password") ?? "")
+    });
+    if (!parsed.success) return { ok: false, message: "Please enter your email and password." };
+
+    const supabase = await createServerSupabaseClient();
+    const { error } = await supabase.auth.signInWithPassword(parsed.data);
+    if (error) return { ok: false, message: "Login failed. Check your email and password." };
+    shouldRedirect = true;
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : "Login failed. Please try again." };
+  }
+  if (shouldRedirect) redirect("/account");
+  return { ok: false, message: "Login failed. Please try again." };
+}
+
+export async function logoutCustomer() {
+  await assertSameOrigin();
+  const supabase = await createServerSupabaseClient();
+  await supabase.auth.signOut();
+  redirect("/");
+}
+
+export async function saveCustomerProfile(_: ActionState, formData: FormData): Promise<ActionState> {
+  try {
+    await assertSameOrigin();
+    const supabase = await createServerSupabaseClient();
+    const { data } = await supabase.auth.getUser();
+    const user = data.user;
+    if (!user?.email) return { ok: false, message: "Please sign in again." };
+
+    const parsed = customerProfileSchema.safeParse({
+      fullName: cleanText(formData.get("fullName"), 120),
+      phone: cleanText(formData.get("phone"), 30)
+    });
+    if (!parsed.success) return { ok: false, message: "Please enter your name and phone number." };
+
+    const { error } = await createAdminClient()
+      .from("customer_profiles")
+      .upsert({
+        user_id: user.id,
+        email: user.email.toLowerCase(),
+        full_name: parsed.data.fullName,
+        phone: parsed.data.phone,
+        updated_at: new Date().toISOString()
+      }, { onConflict: "user_id" });
+    if (error) return { ok: false, message: error.message };
+    revalidatePath("/account");
+    return { ok: true, message: "Profile saved." };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : "Profile could not be saved." };
+  }
+}
+
 export async function submitPreorder(_: ActionState, formData: FormData): Promise<ActionState> {
   try {
     await assertSameOrigin();
@@ -151,6 +272,27 @@ export async function submitPreorder(_: ActionState, formData: FormData): Promis
   });
 
   if (!parsed.success) return { ok: false, message: "Please complete all required fields." };
+
+  let customerUserId: string | null = null;
+  try {
+    const customerClient = await createServerSupabaseClient();
+    const { data } = await customerClient.auth.getUser();
+    const user = data.user;
+    if (user?.email_confirmed_at && user.email?.toLowerCase() === parsed.data.customerEmail) {
+      customerUserId = user.id;
+      await createAdminClient()
+        .from("customer_profiles")
+        .upsert({
+          user_id: user.id,
+          email: parsed.data.customerEmail,
+          full_name: parsed.data.customerName,
+          phone: parsed.data.phone,
+          updated_at: new Date().toISOString()
+        }, { onConflict: "user_id" });
+    }
+  } catch {
+    customerUserId = null;
+  }
 
   const supabase = createAdminClient();
   const { data: activeBatch, error: batchError } = await supabase
@@ -220,6 +362,7 @@ export async function submitPreorder(_: ActionState, formData: FormData): Promis
         order_sequence: nextSequence,
         order_number: newOrderNumber,
         success_token: successToken,
+        customer_user_id: customerUserId,
         customer_name: parsed.data.customerName,
         customer_email: parsed.data.customerEmail,
         phone: parsed.data.phone,

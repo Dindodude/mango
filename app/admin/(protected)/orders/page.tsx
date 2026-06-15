@@ -13,17 +13,18 @@ function quickFilter(order: any, quick: string) {
   return true;
 }
 
-export default async function OrdersPage({ searchParams }: { searchParams: Record<string, string | undefined> }) {
+export default async function OrdersPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
+  const resolvedSearchParams = await searchParams;
   const supabase = createAdminClient();
-  const search = searchParams.search ?? "";
-  const payment = searchParams.payment ?? "";
-  const status = searchParams.status ?? "";
-  const quick = searchParams.quick ?? "";
+  const search = resolvedSearchParams.search ?? "";
+  const payment = resolvedSearchParams.payment ?? "";
+  const status = resolvedSearchParams.status ?? "";
+  const quick = resolvedSearchParams.quick ?? "";
   let query = supabase
     .from("orders")
     .select("*,batches(id,batch_name,batch_code),order_items(product_name_snapshot,quantity)")
     .neq("order_status", "Cancelled")
-    .order("created_at", { ascending: searchParams.sort === "oldest" });
+    .order("created_at", { ascending: resolvedSearchParams.sort === "oldest" });
   if (payment) query = query.eq("payment_status", payment);
   if (status) query = query.eq("order_status", status);
   const { data: orders } = await query;
@@ -47,7 +48,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Recor
     <div className="admin-shell">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <AdminSectionHeader eyebrow="Fulfillment" title="Orders" description={`${filtered.length} orders shown`} />
-        <a href={`/api/admin/export/orders?${new URLSearchParams(searchParams as Record<string, string>).toString()}`} className="btn-primary">
+        <a href={`/api/admin/export/orders?${new URLSearchParams(resolvedSearchParams as Record<string, string>).toString()}`} className="btn-primary">
           <Download className="h-4 w-4" /> Export CSV
         </a>
       </div>
@@ -80,7 +81,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Recor
           <option value="">All status</option>
           {["Submitted", "Confirmed", "Ready for Pickup", "Completed"].map((item) => <option key={item}>{item}</option>)}
         </select>
-        <select name="sort" defaultValue={searchParams.sort ?? "newest"} className="field">
+        <select name="sort" defaultValue={resolvedSearchParams.sort ?? "newest"} className="field">
           <option value="newest">Newest</option>
           <option value="oldest">Oldest</option>
         </select>

@@ -35,6 +35,7 @@ export function AddToCart({ product }: Props) {
         <ShoppingCart className="h-4 w-4" />
         {added ? "Added" : "Add to cart"}
       </button>
+      {added && <span className="hidden rounded-md bg-leaf-50 px-2 py-1 text-xs font-black text-leaf-700 sm:inline">Added</span>}
     </div>
   );
 }

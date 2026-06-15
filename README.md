@@ -37,6 +37,7 @@ ADMIN_SESSION_SECRET=use-a-long-random-secret
 ADMIN_ROLE=owner
 RESEND_API_KEY=your-resend-api-key
 EMAIL_FROM=Mango Preorders <orders@yourdomain.com>
+NEXT_PUBLIC_SITE_URL=https://your-vercel-domain.vercel.app
 ```
 
 Use the base Supabase project URL only, for example `https://abcxyz.supabase.co`. Do not paste a REST endpoint like `/rest/v1`.
@@ -50,6 +51,12 @@ npm run hash-admin-password
 Paste only the generated hash into Vercel or `.env.local`. Do not commit real `.env` files, passwords, service role keys, or Supabase secrets to GitHub.
 
 For email, create a Resend API key and add it as `RESEND_API_KEY`. Set `EMAIL_FROM` to a verified sender/domain in Resend. If Resend is not configured, orders still save, but email errors are recorded for admin review.
+
+Customer accounts use Supabase Auth email/password. In Supabase Auth settings, keep email confirmation enabled and add your deployed domain to the allowed redirect URLs. Include:
+
+```
+https://your-vercel-domain.vercel.app/auth/callback
+```
 
 3. In Supabase SQL Editor, run:
 
