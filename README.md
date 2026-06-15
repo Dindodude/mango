@@ -10,7 +10,8 @@ Full-stack Next.js preorder system for seasonal mango batches. Customers do not 
 - Server-side checkout so totals, costs, profits, and order numbers are generated safely before saving to Supabase
 - Per-batch order numbers like `JUN-W1-2026-001`
 - Admin dashboard, product management, batch management, order management, detail view, reports, CSV exports
-- Direct admin login using secure HTTP-only session cookies
+- Direct admin login using secure HTTP-only session cookies and a hashed password
+- Security headers, admin rate limiting, and admin audit logs
 - RLS enabled on every table
 - No inventory tracking, no stock limits, no stock deductions
 
@@ -30,12 +31,20 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ADMIN_EMAIL=admin@example.com
-ADMIN_PASSWORD=choose-a-secure-password
+ADMIN_PASSWORD_HASH=pbkdf2_sha256$310000$replace-with-salt$replace-with-hash
 ADMIN_SESSION_SECRET=use-a-long-random-secret
 ADMIN_ROLE=owner
 ```
 
 Use the base Supabase project URL only, for example `https://abcxyz.supabase.co`. Do not paste a REST endpoint like `/rest/v1`.
+
+Generate `ADMIN_PASSWORD_HASH` locally:
+
+```bash
+npm run hash-admin-password
+```
+
+Paste only the generated hash into Vercel or `.env.local`. Do not commit real `.env` files, passwords, service role keys, or Supabase secrets to GitHub.
 
 3. In Supabase SQL Editor, run:
 
@@ -44,7 +53,7 @@ supabase/schema.sql
 supabase/seed.sql
 ```
 
-4. Admin login is controlled by `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ADMIN_SESSION_SECRET`, and `ADMIN_ROLE`. You do not need Supabase Auth for admin login in this version.
+4. Admin login is controlled by `ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH`, `ADMIN_SESSION_SECRET`, and `ADMIN_ROLE`. You do not need Supabase Auth for admin login in this version.
 
 5. Start the app:
 
@@ -56,12 +65,14 @@ Open `http://localhost:3000`.
 
 ## Supabase Notes
 
-- RLS is enabled for `batches`, `products`, `orders`, `order_items`, `admin_users`, and `reports`.
+- RLS is enabled for `batches`, `products`, `orders`, `order_items`, `admin_users`, `reports`, `admin_login_attempts`, and `admin_audit_logs`.
 - Public users can read active batch/product information.
-- Public checkout uses `create_public_preorder(...)`, a security-definer database function.
+- Public checkout submits to a protected server action. The backend recalculates totals, costs, profits, and order numbers before saving with the Supabase service role key.
 - Public users cannot read orders, cost, profit, admin notes, or dashboard data.
 - Admin pages require the direct admin session cookie. Admin database reads/writes use the Supabase service role key on the server only.
 - Only one batch can be active because of a partial unique index.
+- There are no file uploads, AI actions, webhooks, public staging dashboards, or customer accounts in this app. If those features are added later, add specific security controls for them before launch.
+- Configure backups and monitoring in Supabase/Vercel for production. Code cannot replace a backup/restore plan.
 
 ## Deployment to Vercel
 
@@ -69,7 +80,7 @@ Open `http://localhost:3000`.
 2. Import the repository in Vercel.
 3. Add the same environment variables from `.env.example`.
 4. Deploy.
-5. Open `/admin/login` and sign in with `ADMIN_EMAIL` and `ADMIN_PASSWORD`.
+5. Open `/admin/login` and sign in with `ADMIN_EMAIL` and the original password used to generate `ADMIN_PASSWORD_HASH`.
 
 ## Customer Flow
 

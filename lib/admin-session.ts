@@ -17,7 +17,7 @@ function adminEmail() {
 }
 
 function adminPassword() {
-  return process.env.ADMIN_PASSWORD ?? "";
+  return process.env.ADMIN_PASSWORD_HASH ?? "";
 }
 
 function adminRole(): AdminRole {
@@ -26,7 +26,7 @@ function adminRole(): AdminRole {
 }
 
 function sessionSecret() {
-  return process.env.ADMIN_SESSION_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+  return process.env.ADMIN_SESSION_SECRET ?? "";
 }
 
 function sign(payload: string) {
@@ -63,22 +63,34 @@ export function hasDirectAdminConfig() {
   return Boolean(adminEmail() && adminPassword() && sessionSecret());
 }
 
+function verifyPasswordHash(password: string, storedHash: string) {
+  const [scheme, iterationsValue, salt, expectedHash] = storedHash.split("$");
+  const iterations = Number(iterationsValue);
+  if (scheme !== "pbkdf2_sha256" || !iterations || !salt || !expectedHash) return false;
+
+  const actualHash = crypto
+    .pbkdf2Sync(password, salt, iterations, 32, "sha256")
+    .toString("base64url");
+
+  return safeEqual(actualHash, expectedHash);
+}
+
 export function verifyDirectAdminCredentials(email: string, password: string) {
   if (!hasDirectAdminConfig()) {
     return {
       ok: false,
-      message: "Admin login is not configured yet. Add ADMIN_EMAIL, ADMIN_PASSWORD, and ADMIN_SESSION_SECRET in Vercel."
+      message: "Admin login is not configured yet. Add ADMIN_EMAIL, ADMIN_PASSWORD_HASH, and ADMIN_SESSION_SECRET in Vercel."
     };
   }
 
-  if (!safeEqual(email.trim().toLowerCase(), adminEmail()) || !safeEqual(password, adminPassword())) {
+  if (!safeEqual(email.trim().toLowerCase(), adminEmail()) || !verifyPasswordHash(password, adminPassword())) {
     return { ok: false, message: "Login failed. Check your email and password." };
   }
 
   return { ok: true, message: "" };
 }
 
-export function createDirectAdminSession(email: string) {
+export async function createDirectAdminSession(email: string) {
   const role = adminRole();
   const session: AdminSession = {
     email: email.trim().toLowerCase(),
@@ -86,21 +98,24 @@ export function createDirectAdminSession(email: string) {
     expiresAt: Date.now() + SESSION_SECONDS * 1000
   };
 
-  cookies().set(COOKIE_NAME, encodeSession(session), {
+  const cookieStore = await cookies();
+  cookieStore.set(COOKIE_NAME, encodeSession(session), {
     httpOnly: true,
-    sameSite: "lax",
+    sameSite: "strict",
     secure: process.env.NODE_ENV === "production",
     path: "/",
     maxAge: SESSION_SECONDS
   });
 }
 
-export function clearDirectAdminSession() {
-  cookies().delete(COOKIE_NAME);
+export async function clearDirectAdminSession() {
+  const cookieStore = await cookies();
+  cookieStore.delete(COOKIE_NAME);
 }
 
-export function getDirectAdminUser() {
-  const session = decodeSession(cookies().get(COOKIE_NAME)?.value);
+export async function getDirectAdminUser() {
+  const cookieStore = await cookies();
+  const session = decodeSession(cookieStore.get(COOKIE_NAME)?.value);
   if (!session) return null;
 
   return {

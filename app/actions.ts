@@ -1,11 +1,14 @@
 "use server";
 
+import crypto from "crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth";
+import { isLoginRateLimited, loginAttemptKey, logAdminAction, recordLoginAttempt } from "@/lib/audit";
 import { clearDirectAdminSession, createDirectAdminSession, verifyDirectAdminCredentials } from "@/lib/admin-session";
 import { hasSupabaseAdminConfig } from "@/lib/env";
+import { assertSameOrigin, parseUuid, requestIp } from "@/lib/security";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { cleanText } from "@/lib/utils";
 
@@ -33,6 +36,9 @@ const batchSchema = z.object({
   batch_name: z.string().max(120).optional(),
   status: z.enum(["Draft", "Active", "Closed", "Completed"])
 });
+
+const paymentStatusSchema = z.enum(["Awaiting Payment", "Payment Claimed by Customer", "Payment Verified", "Payment Issue", "Refunded"]);
+const orderStatusSchema = z.enum(["Submitted", "Confirmed", "Ready for Pickup", "Completed", "Cancelled"]);
 
 export type ActionState = { ok: boolean; message: string; orderId?: string; orderNumber?: string };
 export type AdminActionState = { ok: boolean; message: string };
@@ -115,6 +121,12 @@ function batchNameFromDate(isoDate: string) {
 }
 
 export async function submitPreorder(_: ActionState, formData: FormData): Promise<ActionState> {
+  try {
+    await assertSameOrigin();
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : "Please refresh and try again." };
+  }
+
   if (!hasSupabaseAdminConfig()) {
     return { ok: false, message: "Supabase is not configured yet. Please check your Vercel environment variables." };
   }
@@ -197,12 +209,14 @@ export async function submitPreorder(_: ActionState, formData: FormData): Promis
 
     const nextSequence = Number(latestOrder?.order_sequence ?? 0) + 1;
     const newOrderNumber = `${activeBatch.batch_code}-${String(nextSequence).padStart(3, "0")}`;
+    const successToken = crypto.randomBytes(24).toString("base64url");
     const { data: order, error: orderError } = await supabase
       .from("orders")
       .insert({
         batch_id: activeBatch.id,
         order_sequence: nextSequence,
         order_number: newOrderNumber,
+        success_token: successToken,
         customer_name: parsed.data.customerName,
         phone: parsed.data.phone,
         notes: parsed.data.notes ?? null,
@@ -228,30 +242,42 @@ export async function submitPreorder(_: ActionState, formData: FormData): Promis
       return { ok: false, message: itemError.message };
     }
 
-    redirect(`/success?order=${encodeURIComponent(order.order_number)}`);
+    redirect(`/success?order=${encodeURIComponent(order.order_number)}&token=${encodeURIComponent(successToken)}`);
   }
 
   return { ok: false, message: "Please try submitting again. The order number was being used at the same time." };
 }
 
 export async function loginAdmin(_: ActionState, formData: FormData): Promise<ActionState> {
+  try {
+    await assertSameOrigin();
+  } catch {
+    return { ok: false, message: "Login failed. Check your email and password." };
+  }
+
   const email = cleanText(formData.get("email"), 160).toLowerCase();
   const password = String(formData.get("password") ?? "");
-
+  const attemptKey = loginAttemptKey(email, await requestIp());
+  if (await isLoginRateLimited(attemptKey)) {
+    return { ok: false, message: "Too many login attempts. Please try again later." };
+  }
   const verified = verifyDirectAdminCredentials(email, password);
+  await recordLoginAttempt(attemptKey, verified.ok);
   if (!verified.ok) return verified;
 
-  createDirectAdminSession(email);
+  await createDirectAdminSession(email);
   redirect("/admin");
 }
 
 export async function logoutAdmin() {
-  clearDirectAdminSession();
+  await assertSameOrigin();
+  await clearDirectAdminSession();
   redirect("/admin/login");
 }
 
 export async function saveProduct(_: AdminActionState, formData: FormData): Promise<AdminActionState> {
   try {
+    await assertSameOrigin();
     const admin = await requireAdmin();
     if (admin.role === "staff") return { ok: false, message: "Staff accounts cannot manage products." };
     const parsed = productSchema.safeParse({
@@ -265,11 +291,21 @@ export async function saveProduct(_: AdminActionState, formData: FormData): Prom
 
     if (!parsed.success) return { ok: false, message: "Please check the product name and prices." };
 
-    const id = String(formData.get("id") ?? "");
+    const rawId = String(formData.get("id") ?? "");
+    const id = rawId ? parseUuid(rawId, "product ID") : "";
     const supabase = createAdminClient();
     const payload = { ...parsed.data, image_url: null };
-    const { error } = id ? await supabase.from("products").update(payload).eq("id", id) : await supabase.from("products").insert(payload);
+    const { data, error } = id
+      ? await supabase.from("products").update(payload).eq("id", id).select("id").single()
+      : await supabase.from("products").insert(payload).select("id").single();
     if (error) return { ok: false, message: adminErrorMessage(error.message) };
+    await logAdminAction({
+      adminEmail: admin.email,
+      action: id ? "product.update" : "product.create",
+      entityType: "product",
+      entityId: data?.id ?? id,
+      metadata: { name: parsed.data.name, active: parsed.data.active }
+    });
 
     revalidatePath("/admin/products");
     return { ok: true, message: "Product saved." };
@@ -279,14 +315,18 @@ export async function saveProduct(_: AdminActionState, formData: FormData): Prom
 }
 
 export async function deleteProduct(formData: FormData) {
+  await assertSameOrigin();
   const admin = await requireAdmin();
   if (admin.role === "staff") throw new Error("Not allowed");
-  await createAdminClient().from("products").delete().eq("id", String(formData.get("id")));
+  const id = parseUuid(formData.get("id"), "product ID");
+  await createAdminClient().from("products").delete().eq("id", id);
+  await logAdminAction({ adminEmail: admin.email, action: "product.delete", entityType: "product", entityId: id });
   revalidatePath("/admin/products");
 }
 
 export async function saveBatch(_: AdminActionState, formData: FormData): Promise<AdminActionState> {
   try {
+    await assertSameOrigin();
     const admin = await requireAdmin();
     if (admin.role === "staff") return { ok: false, message: "Staff accounts cannot manage batches." };
     const parsed = batchSchema.safeParse({
@@ -300,7 +340,8 @@ export async function saveBatch(_: AdminActionState, formData: FormData): Promis
     const arrivalDate = parseAdminDate(formData.get("arrival_date"));
     if (!arrivalDate) return { ok: false, message: "Please enter the date like June 15 2026." };
 
-    const id = String(formData.get("id") ?? "");
+    const rawId = String(formData.get("id") ?? "");
+    const id = rawId ? parseUuid(rawId, "batch ID") : "";
     const payload = {
       batch_code: batchCodeFromDate(arrivalDate),
       batch_name: parsed.data.batch_name?.trim() || batchNameFromDate(arrivalDate),
@@ -310,9 +351,18 @@ export async function saveBatch(_: AdminActionState, formData: FormData): Promis
       status: parsed.data.status
     };
     const supabase = createAdminClient();
-    const { error } = id ? await supabase.from("batches").update(payload).eq("id", id) : await supabase.from("batches").insert(payload);
+    const { data, error } = id
+      ? await supabase.from("batches").update(payload).eq("id", id).select("id").single()
+      : await supabase.from("batches").insert(payload).select("id").single();
     if (error?.code === "23505") return { ok: false, message: "A batch with this date already exists, or another batch is already Active." };
     if (error) return { ok: false, message: adminErrorMessage(error.message) };
+    await logAdminAction({
+      adminEmail: admin.email,
+      action: id ? "batch.update" : "batch.create",
+      entityType: "batch",
+      entityId: data?.id ?? id,
+      metadata: { status: parsed.data.status, arrival_date: arrivalDate }
+    });
 
     revalidatePath("/admin/batches");
     revalidatePath("/");
@@ -323,28 +373,37 @@ export async function saveBatch(_: AdminActionState, formData: FormData): Promis
 }
 
 export async function updateOrder(formData: FormData) {
-  await requireAdmin();
-  const orderId = String(formData.get("id"));
+  await assertSameOrigin();
+  const admin = await requireAdmin();
+  const orderId = parseUuid(formData.get("id"), "order ID");
   const paymentValues = formData.getAll("payment_status");
   const orderValues = formData.getAll("order_status");
-  const orderStatus = cleanText(orderValues[orderValues.length - 1], 60);
+  const paymentStatus = paymentStatusSchema.parse(cleanText(paymentValues[paymentValues.length - 1], 60));
+  const orderStatus = orderStatusSchema.parse(cleanText(orderValues[orderValues.length - 1], 60));
   const supabase = createAdminClient();
 
   if (orderStatus === "Cancelled") {
     await supabase.from("orders").delete().eq("id", orderId);
+    await logAdminAction({ adminEmail: admin.email, action: "order.cancel_delete", entityType: "order", entityId: orderId });
     revalidatePath("/admin/orders");
     revalidatePath("/admin");
     revalidatePath("/admin/reports");
     redirect("/admin/orders");
   }
 
-  const payload = {
-    payment_status: cleanText(paymentValues[paymentValues.length - 1], 60),
-    order_status: orderStatus,
-    payment_reference_notes: cleanText(formData.get("payment_reference_notes"), 700),
-    admin_notes: cleanText(formData.get("admin_notes"), 1000)
-  };
+  const payload: Record<string, string> = { payment_status: paymentStatus, order_status: orderStatus };
+  if (admin.role !== "staff") {
+    payload.payment_reference_notes = cleanText(formData.get("payment_reference_notes"), 700);
+    payload.admin_notes = cleanText(formData.get("admin_notes"), 1000);
+  }
   await supabase.from("orders").update(payload).eq("id", orderId);
+  await logAdminAction({
+    adminEmail: admin.email,
+    action: "order.update",
+    entityType: "order",
+    entityId: orderId,
+    metadata: { payment_status: paymentStatus, order_status: orderStatus }
+  });
   revalidatePath("/admin/orders");
   revalidatePath(`/admin/orders/${orderId}`);
 }

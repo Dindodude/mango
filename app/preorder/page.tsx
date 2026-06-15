@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { CalendarDays, ShoppingBag } from "lucide-react";
 import { AddToCart } from "@/components/add-to-cart";
 import { SiteFooter } from "@/components/site-footer";
@@ -9,7 +10,7 @@ import { createClient } from "@/lib/supabase/server";
 import { money } from "@/lib/utils";
 
 export default async function PreorderPage() {
-  const supabase = hasSupabaseConfig() ? createClient() : null;
+  const supabase = hasSupabaseConfig() ? await createClient() : null;
   const { data: batch } = supabase
     ? await supabase.from("batches").select("*").eq("status", "Active").maybeSingle()
     : { data: null };
@@ -41,9 +42,11 @@ export default async function PreorderPage() {
         </div>
         {!batch ? (
           <div className="surface grid gap-5 overflow-hidden p-5 md:grid-cols-[0.9fr_1.1fr] md:items-center">
-            <img
+            <Image
               src="https://images.unsplash.com/photo-1601493700631-2b16ec4b4716?auto=format&fit=crop&w=1000&q=85"
               alt="Fresh mangoes"
+              width={1000}
+              height={720}
               className="h-56 w-full rounded-md object-cover md:h-72"
             />
             <div>

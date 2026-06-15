@@ -20,7 +20,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const saved = window.localStorage.getItem(key);
-    if (saved) setItems(JSON.parse(saved));
+    if (saved) {
+      // Cart storage is temporary customer convenience; final orders are saved in Supabase.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setItems(JSON.parse(saved));
+    }
   }, []);
 
   useEffect(() => {

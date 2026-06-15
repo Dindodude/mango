@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
+import { logAdminAction } from "@/lib/audit";
+import { parseUuid } from "@/lib/security";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { csvEscape } from "@/lib/utils";
 
@@ -29,12 +31,24 @@ function orderItems(order: any) {
   return order.order_items?.map((item: any) => `${item.product_name_snapshot} x${item.quantity}`).join("; ") ?? "";
 }
 
-export async function GET(request: Request, { params }: { params: { type: string } }) {
-  await requireAdmin();
+export async function GET(request: Request, context: { params: Promise<{ type: string }> }) {
+  const admin = await requireAdmin();
   const supabase = createAdminClient();
+  const params = await context.params;
+  const exportType = params.type;
 
-  if (params.type === "batch-paid") {
-    const batchId = new URL(request.url).searchParams.get("batchId");
+  if (!["all", "unpaid", "batch-paid"].includes(exportType)) {
+    return new NextResponse("Unknown export type", { status: 404 });
+  }
+
+  if (exportType === "batch-paid") {
+    const rawBatchId = new URL(request.url).searchParams.get("batchId");
+    let batchId = "";
+    try {
+      batchId = rawBatchId ? parseUuid(rawBatchId, "batch ID") : "";
+    } catch {
+      return new NextResponse("Invalid batchId", { status: 400 });
+    }
     if (!batchId) return new NextResponse("Missing batchId", { status: 400 });
 
     const { data: batch } = await supabase.from("batches").select("batch_code,batch_name").eq("id", batchId).maybeSingle();
@@ -85,6 +99,13 @@ export async function GET(request: Request, { params }: { params: { type: string
       .join("\n");
 
     const fileCode = (batch?.batch_code ?? "batch").toLowerCase().replace(/[^a-z0-9-]+/g, "-");
+    await logAdminAction({
+      adminEmail: admin.email,
+      action: "export.batch_paid",
+      entityType: "batch",
+      entityId: batchId,
+      metadata: { paid_orders: paidOrders.length, total_money: totalMoney, total_profit: totalProfit }
+    });
     return csvResponse(csv, `${fileCode}-paid-orders.csv`);
   }
 
@@ -95,7 +116,7 @@ export async function GET(request: Request, { params }: { params: { type: string
     .order("created_at", { ascending: false });
 
   const rows = (orders ?? []).filter((order) => {
-    if (params.type === "unpaid") return order.payment_status !== "Payment Verified";
+    if (exportType === "unpaid") return order.payment_status !== "Payment Verified";
     return true;
   });
 
@@ -118,5 +139,11 @@ export async function GET(request: Request, { params }: { params: { type: string
     )
     .join("\n");
 
-  return csvResponse(csv, `${params.type}-report.csv`);
+  await logAdminAction({
+    adminEmail: admin.email,
+    action: `export.${exportType}`,
+    entityType: "orders",
+    metadata: { row_count: rows.length }
+  });
+  return csvResponse(csv, `${exportType}-report.csv`);
 }

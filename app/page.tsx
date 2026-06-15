@@ -7,14 +7,9 @@ import { createClient } from "@/lib/supabase/server";
 import { CONTACT_PHONE_E164, ETRANSFER_EMAIL, PICKUP_ADDRESS } from "@/lib/constants";
 
 export default async function HomePage() {
-  const activeBatch = hasSupabaseConfig()
-    ? (
-        await createClient()
-          .from("batches")
-          .select("batch_name,cutoff_date,expected_arrival_date")
-          .eq("status", "Active")
-          .maybeSingle()
-      ).data
+  const supabase = hasSupabaseConfig() ? await createClient() : null;
+  const activeBatch = supabase
+    ? (await supabase.from("batches").select("batch_name,cutoff_date,expected_arrival_date").eq("status", "Active").maybeSingle()).data
     : null;
 
   return (

@@ -10,14 +10,16 @@ import { money } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
-export default async function SuccessPage({ searchParams }: { searchParams: { order?: string } }) {
+export default async function SuccessPage({ searchParams }: { searchParams: { order?: string; token?: string } }) {
   const orderNumber = searchParams.order ?? "";
-  const order = hasSupabaseAdminConfig()
+  const token = searchParams.token ?? "";
+  const order = hasSupabaseAdminConfig() && orderNumber && token
     ? (
         await createAdminClient()
           .from("orders")
           .select("order_number,total_amount,order_items(product_name_snapshot,quantity,line_total)")
           .eq("order_number", orderNumber)
+          .eq("success_token", token)
           .maybeSingle()
       ).data
     : null;
