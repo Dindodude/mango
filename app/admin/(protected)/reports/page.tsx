@@ -32,7 +32,12 @@ export default async function ReportsPage() {
   }, {})).sort((a, b) => a.batch.localeCompare(b.batch) || b.quantity - a.quantity);
 
   const activeSupplier = supplier.filter((row: any) => !activeBatch || row.batch === activeBatch.batch_name);
-  const supplierText = activeSupplier.map((row: any) => `${row.name}: ${row.quantity}`).join("\n");
+  const supplierTotals = Object.values(activeSupplier.reduce<Record<string, any>>((acc, row: any) => {
+    acc[row.name] ??= { name: row.name, quantity: 0 };
+    acc[row.name].quantity += Number(row.quantity);
+    return acc;
+  }, {})).sort((a: any, b: any) => b.quantity - a.quantity || a.name.localeCompare(b.name));
+  const supplierText = supplierTotals.map((row: any) => `${row.name}: ${row.quantity}`).join("\n");
 
   return (
     <div className="admin-shell">
@@ -54,7 +59,9 @@ export default async function ReportsPage() {
             <h2 className="font-black text-stone-950">Supplier Summary</h2>
             <p className="mt-1 text-sm font-semibold text-stone-600">Verified paid orders only{activeBatch ? ` for ${activeBatch.batch_name}` : ""}.</p>
           </div>
-          <CopyButton label="Supplier text" value={supplierText || "No supplier items yet."} />
+          <div className="w-full sm:w-auto">
+            <CopyButton label="Copy supplier text" value={supplierText || "No supplier items yet."} />
+          </div>
         </div>
         <pre className="mt-4 whitespace-pre-wrap rounded-lg border border-stone-200 bg-stone-50 p-4 text-sm font-semibold text-stone-800">{supplierText || "No supplier items yet."}</pre>
       </section>
