@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { MailWarning, PackageCheck, ShoppingBasket } from "lucide-react";
+import { PackageCheck, ShoppingBasket } from "lucide-react";
 import { logoutCustomer } from "@/app/actions";
 import { CustomerProfileForm } from "@/components/customer-profile-form";
 import { SiteFooter } from "@/components/site-footer";
@@ -14,19 +14,16 @@ export default async function AccountPage() {
   const session = await requireCustomer();
   const user = session.user!;
 
-  let orders: any[] = [];
-  if (user.emailConfirmed) {
-    const supabase = createAdminClient();
-    const safeOrderSelect = "id,order_number,customer_name,customer_email,phone,total_amount,payment_status,order_status,created_at,order_items(product_name_snapshot,quantity,line_total)";
-    const [{ data: userOrders }, { data: emailOrders }] = await Promise.all([
-      supabase.from("orders").select(safeOrderSelect).neq("order_status", "Cancelled").eq("customer_user_id", user.id).order("created_at", { ascending: false }),
-      supabase.from("orders").select(safeOrderSelect).neq("order_status", "Cancelled").ilike("customer_email", user.email).order("created_at", { ascending: false })
-    ]);
-    orders = Object.values([...(userOrders ?? []), ...(emailOrders ?? [])].reduce<Record<string, any>>((acc, order) => {
-      acc[order.id] = order;
-      return acc;
-    }, {})).sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-  }
+  const supabase = createAdminClient();
+  const safeOrderSelect = "id,order_number,customer_name,customer_email,phone,total_amount,payment_status,order_status,created_at,order_items(product_name_snapshot,quantity,line_total)";
+  const [{ data: customerOrders }, { data: emailOrders }] = await Promise.all([
+    supabase.from("orders").select(safeOrderSelect).neq("order_status", "Cancelled").eq("customer_id", user.id).order("created_at", { ascending: false }),
+    supabase.from("orders").select(safeOrderSelect).neq("order_status", "Cancelled").ilike("customer_email", user.email).order("created_at", { ascending: false })
+  ]);
+  const orders = Object.values([...(customerOrders ?? []), ...(emailOrders ?? [])].reduce<Record<string, any>>((acc, order) => {
+    acc[order.id] = order;
+    return acc;
+  }, {})).sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   return (
     <main>
@@ -42,18 +39,6 @@ export default async function AccountPage() {
             <button className="btn-secondary">Sign out</button>
           </form>
         </div>
-
-        {!user.emailConfirmed && (
-          <div className="surface mt-6 border-amber-200 bg-amber-50 p-5">
-            <div className="flex gap-3">
-              <MailWarning className="mt-1 h-5 w-5 text-amber-700" />
-              <div>
-                <h2 className="font-black text-stone-950">Verify your email first.</h2>
-                <p className="mt-1 text-sm leading-6 text-stone-700">Check your inbox. Your order history appears after your email is verified.</p>
-              </div>
-            </div>
-          </div>
-        )}
 
         <div className="mt-6 grid gap-5 lg:grid-cols-[0.8fr_1.2fr]">
           <CustomerProfileForm fullName={session.profile?.full_name} phone={session.profile?.phone} />
@@ -78,7 +63,7 @@ export default async function AccountPage() {
                   <p className="mt-3 text-sm text-stone-600">{order.order_items?.map((item: any) => `${item.product_name_snapshot} x${item.quantity}`).join(", ")}</p>
                 </Link>
               ))}
-              {user.emailConfirmed && !orders.length && (
+              {!orders.length && (
                 <div className="rounded-lg border border-dashed border-stone-300 bg-stone-50 p-6 text-center">
                   <PackageCheck className="mx-auto h-8 w-8 text-stone-400" />
                   <p className="mt-3 font-black text-stone-950">No saved orders yet.</p>

@@ -44,6 +44,32 @@ function plainItems(items: EmailLine[]) {
   return items.map((item) => `${item.product_name_snapshot} x ${item.quantity} - ${money(item.line_total)}`).join("\n");
 }
 
+export async function sendCustomerSignupCodeEmail(input: { customerEmail: string; code: string }) {
+  const resend = resendClient();
+  if (!resend) return { sent: false, error: "RESEND_API_KEY is missing." };
+
+  const html = `
+    <div style="font-family:Arial,sans-serif;line-height:1.55;color:#1f2937">
+      <h1 style="color:#183416">Your Mango Preorders code</h1>
+      <p>Use this code to create your account:</p>
+      <p style="font-size:28px;font-weight:800;letter-spacing:4px;color:#183416">${escapeHtml(input.code)}</p>
+      <p>This code expires in 10 minutes.</p>
+    </div>
+  `;
+  const text = `Your Mango Preorders code is ${input.code}. This code expires in 10 minutes.`;
+
+  const { error } = await resend.emails.send({
+    from: fromAddress(),
+    to: input.customerEmail,
+    subject: "Your Mango Preorders code",
+    html,
+    text
+  });
+
+  if (error) return { sent: false, error: error.message };
+  return { sent: true, error: null };
+}
+
 async function sendCustomerEmail(input: OrderEmailInput & { subject: string; htmlIntro: string; textIntro: string }) {
   if (!input.customerEmail) return { sent: false, error: "Customer email is missing." };
 

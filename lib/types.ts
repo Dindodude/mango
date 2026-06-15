@@ -44,6 +44,7 @@ export type Order = {
   id: string;
   batch_id: string;
   customer_user_id?: string | null;
+  customer_id?: string | null;
   order_sequence: number;
   order_number: string;
   customer_name: string;

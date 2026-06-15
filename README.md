@@ -1,6 +1,6 @@
 # Mango Preorder Management System
 
-Full-stack Next.js preorder system for seasonal mango batches. Customers do not need accounts. Admins use a server-only email/password stored in environment variables.
+Full-stack Next.js preorder system for seasonal mango batches. Guest checkout works, and customers can optionally create accounts with an email code and password. Admins use a separate server-only email/password stored in environment variables.
 
 ## Features
 
@@ -9,6 +9,7 @@ Full-stack Next.js preorder system for seasonal mango batches. Customers do not 
 - Supabase-backed orders, order items, batches, products, admin users, reports
 - Server-side checkout so totals, costs, profits, and order numbers are generated safely before saving to Supabase
 - Automatic customer emails for order received and payment verified confirmations using Resend
+- Optional customer accounts using custom Resend email codes, hashed passwords, and server-side Supabase storage
 - Per-batch order numbers like `JUN-W1-2026-001`
 - Admin dashboard, product management, batch management, order management, supplier summaries, pickup lists, reports, CSV exports
 - Direct admin login using secure HTTP-only session cookies and a hashed password
@@ -34,6 +35,7 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ADMIN_EMAIL=admin@example.com
 ADMIN_PASSWORD_HASH=pbkdf2_sha256$310000$replace-with-salt$replace-with-hash
 ADMIN_SESSION_SECRET=use-a-long-random-secret
+CUSTOMER_SESSION_SECRET=use-another-long-random-secret-at-least-32-characters
 ADMIN_ROLE=owner
 RESEND_API_KEY=your-resend-api-key
 EMAIL_FROM=Mango Preorders <orders@yourdomain.com>
@@ -50,13 +52,9 @@ npm run hash-admin-password
 
 Paste only the generated hash into Vercel or `.env.local`. Do not commit real `.env` files, passwords, service role keys, or Supabase secrets to GitHub.
 
-For email, create a Resend API key and add it as `RESEND_API_KEY`. Set `EMAIL_FROM` to a verified sender/domain in Resend. If Resend is not configured, orders still save, but email errors are recorded for admin review.
+For email, create a Resend API key and add it as `RESEND_API_KEY`. Set `EMAIL_FROM` to a verified sender/domain in Resend. Resend sends signup codes, order received emails, and payment verified emails. If Resend is not configured, orders still save, but email errors are recorded for admin review.
 
-Customer accounts use Supabase Auth email/password. In Supabase Auth settings, keep email confirmation enabled and add your deployed domain to the allowed redirect URLs. Include:
-
-```
-https://your-vercel-domain.vercel.app/auth/callback
-```
+Customer accounts do not use Supabase Auth. The app sends a 6-digit Resend code, stores only the hashed code, stores only hashed passwords, and uses a secure HTTP-only customer session cookie. Add `CUSTOMER_SESSION_SECRET` in Vercel; use a different secret than `ADMIN_SESSION_SECRET`.
 
 3. In Supabase SQL Editor, run:
 
@@ -65,7 +63,7 @@ supabase/schema.sql
 supabase/seed.sql
 ```
 
-4. Admin login is controlled by `ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH`, `ADMIN_SESSION_SECRET`, and `ADMIN_ROLE`. You do not need Supabase Auth for admin login in this version.
+4. Admin login is controlled by `ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH`, `ADMIN_SESSION_SECRET`, and `ADMIN_ROLE`. Customer login is controlled by `CUSTOMER_SESSION_SECRET`, `RESEND_API_KEY`, and the custom customer tables in Supabase.
 
 5. Start the app:
 
@@ -77,14 +75,14 @@ Open `http://localhost:3000`.
 
 ## Supabase Notes
 
-- RLS is enabled for `batches`, `products`, `orders`, `order_items`, `admin_users`, `reports`, `admin_login_attempts`, and `admin_audit_logs`.
+- RLS is enabled for `batches`, `products`, `orders`, `order_items`, `customer_profiles`, `customer_email_codes`, `customer_sessions`, `admin_users`, `reports`, `admin_login_attempts`, and `admin_audit_logs`.
 - Public users can read active batch/product information.
 - Public checkout submits to a protected server action. The backend recalculates totals, costs, profits, and order numbers before saving with the Supabase service role key.
 - Checkout stores customer email for order confirmations.
 - Public users cannot read orders, cost, profit, admin notes, or dashboard data.
 - Admin pages require the direct admin session cookie. Admin database reads/writes use the Supabase service role key on the server only.
 - Only one batch can be active because of a partial unique index.
-- There are no file uploads, AI actions, webhooks, public staging dashboards, or customer accounts in this app. If those features are added later, add specific security controls for them before launch.
+- There are no file uploads, AI actions, webhooks, or public staging dashboards in this app. If those features are added later, add specific security controls for them before launch.
 - Configure backups and monitoring in Supabase/Vercel for production. Code cannot replace a backup/restore plan.
 
 ## Deployment to Vercel

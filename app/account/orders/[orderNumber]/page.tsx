@@ -17,17 +17,16 @@ export default async function CustomerOrderPage({ params }: { params: Promise<{ 
   const { orderNumber } = await params;
   const session = await requireCustomer();
   const user = session.user!;
-  if (!user.emailConfirmed) notFound();
 
   const supabase = createAdminClient();
   const { data: order } = await supabase
     .from("orders")
-    .select("id,customer_user_id,customer_email,order_number,total_amount,payment_status,order_status,created_at,order_items(product_name_snapshot,quantity,line_total)")
+    .select("id,customer_id,customer_email,order_number,total_amount,payment_status,order_status,created_at,order_items(product_name_snapshot,quantity,line_total)")
     .eq("order_number", orderNumber)
     .neq("order_status", "Cancelled")
     .maybeSingle();
 
-  if (!order || (order.customer_user_id !== user.id && String(order.customer_email ?? "").toLowerCase() !== user.email)) notFound();
+  if (!order || (order.customer_id !== user.id && String(order.customer_email ?? "").toLowerCase() !== user.email)) notFound();
 
   const names = (order.order_items ?? []).map((item: any) => item.product_name_snapshot);
   const { data: products } = names.length

@@ -68,25 +68,61 @@ create table if not exists public.order_items (
 
 alter table public.orders add column if not exists success_token text;
 alter table public.orders add column if not exists customer_user_id uuid references auth.users(id) on delete set null;
+alter table public.orders add column if not exists customer_id uuid;
 alter table public.orders add column if not exists customer_email text;
 alter table public.orders add column if not exists order_received_email_sent_at timestamptz;
 alter table public.orders add column if not exists payment_verified_email_sent_at timestamptz;
 alter table public.orders add column if not exists last_email_error text;
 create unique index if not exists orders_success_token_key on public.orders (success_token) where success_token is not null;
 create index if not exists orders_customer_user_id_idx on public.orders (customer_user_id);
+create index if not exists orders_customer_id_idx on public.orders (customer_id);
 create index if not exists orders_customer_email_idx on public.orders (lower(customer_email));
 
 create table if not exists public.customer_profiles (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid not null unique references auth.users(id) on delete cascade,
+  user_id uuid unique references auth.users(id) on delete set null,
   email text not null unique,
+  password_hash text,
   full_name text,
   phone text,
+  email_verified_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
+alter table public.customer_profiles alter column user_id drop not null;
+alter table public.customer_profiles add column if not exists password_hash text;
+alter table public.customer_profiles add column if not exists email_verified_at timestamptz;
+alter table public.orders
+  drop constraint if exists orders_customer_id_fkey,
+  add constraint orders_customer_id_fkey foreign key (customer_id) references public.customer_profiles(id) on delete set null;
 create index if not exists customer_profiles_email_idx on public.customer_profiles (lower(email));
+
+create table if not exists public.customer_email_codes (
+  id uuid primary key default gen_random_uuid(),
+  email text not null,
+  purpose text not null check (purpose in ('signup')),
+  code_hash text not null,
+  attempts integer not null default 0,
+  expires_at timestamptz not null,
+  consumed_at timestamptz,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists customer_email_codes_email_created_idx
+  on public.customer_email_codes (lower(email), purpose, created_at desc);
+
+create table if not exists public.customer_sessions (
+  id uuid primary key default gen_random_uuid(),
+  customer_id uuid not null references public.customer_profiles(id) on delete cascade,
+  session_hash text not null unique,
+  expires_at timestamptz not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists customer_sessions_customer_idx on public.customer_sessions (customer_id);
+create index if not exists customer_sessions_expires_idx on public.customer_sessions (expires_at);
 
 create table if not exists public.admin_users (
   id uuid primary key default gen_random_uuid(),
@@ -160,6 +196,8 @@ alter table public.products enable row level security;
 alter table public.orders enable row level security;
 alter table public.order_items enable row level security;
 alter table public.customer_profiles enable row level security;
+alter table public.customer_email_codes enable row level security;
+alter table public.customer_sessions enable row level security;
 alter table public.admin_users enable row level security;
 alter table public.reports enable row level security;
 alter table public.admin_login_attempts enable row level security;
@@ -184,16 +222,17 @@ drop policy if exists "Admins manage order items" on public.order_items;
 create policy "Admins manage order items" on public.order_items for all using (public.is_admin()) with check (public.is_admin());
 
 drop policy if exists "Customers read own profile" on public.customer_profiles;
-create policy "Customers read own profile" on public.customer_profiles for select using (auth.uid() = user_id);
-
 drop policy if exists "Customers update own profile" on public.customer_profiles;
-create policy "Customers update own profile" on public.customer_profiles for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
-
 drop policy if exists "Customers insert own profile" on public.customer_profiles;
-create policy "Customers insert own profile" on public.customer_profiles for insert with check (auth.uid() = user_id);
 
 drop policy if exists "Admins manage customer profiles" on public.customer_profiles;
 create policy "Admins manage customer profiles" on public.customer_profiles for all using (public.is_admin()) with check (public.is_admin());
+
+drop policy if exists "Admins manage customer email codes" on public.customer_email_codes;
+create policy "Admins manage customer email codes" on public.customer_email_codes for all using (public.is_admin()) with check (public.is_admin());
+
+drop policy if exists "Admins manage customer sessions" on public.customer_sessions;
+create policy "Admins manage customer sessions" on public.customer_sessions for all using (public.is_admin()) with check (public.is_admin());
 
 drop policy if exists "Admins view admin users" on public.admin_users;
 create policy "Admins view admin users" on public.admin_users for select using (public.is_admin());
