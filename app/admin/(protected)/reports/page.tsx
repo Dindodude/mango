@@ -1,6 +1,8 @@
 import { Download, LineChart, PackageSearch, Truck } from "lucide-react";
 import { AdminSectionHeader } from "@/components/admin-ui";
 import { CopyButton } from "@/components/copy-button";
+import { EmailTestForm } from "@/components/email-test-form";
+import { emailConfigStatus } from "@/lib/email";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { money } from "@/lib/utils";
 
@@ -11,6 +13,8 @@ export default async function ReportsPage() {
     supabase.from("order_items").select("*,orders!inner(payment_status,order_status,batch_id,batches(batch_name))").eq("orders.payment_status", "Payment Verified").neq("orders.order_status", "Cancelled"),
     supabase.from("batches").select("*").eq("status", "Active").maybeSingle()
   ]);
+  const emailConfig = emailConfigStatus();
+  const emailFailures = (orders ?? []).filter((order: any) => order.last_email_error).slice(0, 6);
 
   const byBatch = Object.values((orders ?? []).reduce<Record<string, any>>((acc, order) => {
     const key = order.batches?.batch_name ?? "No batch";
@@ -64,6 +68,35 @@ export default async function ReportsPage() {
           </div>
         </div>
         <pre className="mt-4 whitespace-pre-wrap rounded-lg border border-stone-200 bg-stone-50 p-4 text-sm font-semibold text-stone-800">{supplierText || "No supplier items yet."}</pre>
+      </section>
+
+      <section className="surface mt-5 p-5">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h2 className="font-black text-stone-950">Email Sending</h2>
+            <p className="mt-1 text-sm font-semibold text-stone-600">Test Resend from this deployed site and see configuration issues.</p>
+          </div>
+          <span className={emailConfig.hasApiKey && !emailConfig.senderError ? "badge-good" : "badge-warm"}>
+            {emailConfig.hasApiKey && !emailConfig.senderError ? "Configured" : "Needs setup"}
+          </span>
+        </div>
+        <div className="mt-4 grid gap-3 rounded-lg border border-stone-200 bg-stone-50 p-4 text-sm font-semibold text-stone-700 sm:grid-cols-2">
+          <p>Resend key: {emailConfig.hasApiKey ? "Present" : "Missing"}</p>
+          <p>From: {emailConfig.from}</p>
+          {emailConfig.senderError && <p className="sm:col-span-2 text-red-700">{emailConfig.senderError}</p>}
+        </div>
+        <EmailTestForm defaultEmail={process.env.ADMIN_EMAIL ?? ""} />
+        {emailFailures.length > 0 && (
+          <div className="mt-4 space-y-2">
+            <h3 className="font-black text-stone-950">Recent email errors</h3>
+            {emailFailures.map((order: any) => (
+              <div key={order.id} className="rounded-md border border-red-100 bg-red-50 p-3 text-sm">
+                <p className="font-black text-stone-950">{order.order_number}</p>
+                <p className="mt-1 font-semibold text-red-700">{order.last_email_error}</p>
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
       <div className="mt-5 grid gap-5 lg:grid-cols-2">

@@ -16,6 +16,8 @@ type OrderEmailInput = {
   items: EmailLine[];
 };
 
+type EmailResult = { sent: boolean; error: string | null; id?: string | null };
+
 function resendClient() {
   const apiKey = process.env.RESEND_API_KEY;
   return apiKey ? new Resend(apiKey) : null;
@@ -23,6 +25,28 @@ function resendClient() {
 
 function fromAddress() {
   return process.env.EMAIL_FROM || "Mango Preorders <onboarding@resend.dev>";
+}
+
+function senderError() {
+  const from = fromAddress();
+  if (from.includes("yourdomain.com")) {
+    return "EMAIL_FROM is still using the placeholder yourdomain.com. Set it to a verified Resend sender, for example Mango Preorders <orders@oakvillemango.com>.";
+  }
+  if (!from.includes("@")) {
+    return "EMAIL_FROM must include an email address, for example Mango Preorders <orders@oakvillemango.com>.";
+  }
+  return null;
+}
+
+function resendErrorText(error: unknown) {
+  if (!error) return null;
+  if (typeof error === "string") return error;
+  if (error instanceof Error) return error.message;
+  if (typeof error === "object") {
+    const record = error as Record<string, unknown>;
+    return String(record.message ?? record.error ?? record.name ?? JSON.stringify(record));
+  }
+  return "Email could not be sent.";
 }
 
 function escapeHtml(value: string | number) {
@@ -44,9 +68,11 @@ function plainItems(items: EmailLine[]) {
   return items.map((item) => `${item.product_name_snapshot} x ${item.quantity} - ${money(item.line_total)}`).join("\n");
 }
 
-export async function sendCustomerSignupCodeEmail(input: { customerEmail: string; code: string }) {
+export async function sendCustomerSignupCodeEmail(input: { customerEmail: string; code: string }): Promise<EmailResult> {
   const resend = resendClient();
   if (!resend) return { sent: false, error: "RESEND_API_KEY is missing." };
+  const invalidSender = senderError();
+  if (invalidSender) return { sent: false, error: invalidSender };
 
   const html = `
     <div style="font-family:Arial,sans-serif;line-height:1.55;color:#1f2937">
@@ -58,23 +84,29 @@ export async function sendCustomerSignupCodeEmail(input: { customerEmail: string
   `;
   const text = `Your Mango Preorders code is ${input.code}. This code expires in 10 minutes.`;
 
-  const { error } = await resend.emails.send({
-    from: fromAddress(),
-    to: input.customerEmail,
-    subject: "Your Mango Preorders code",
-    html,
-    text
-  });
+  try {
+    const { data, error } = await resend.emails.send({
+      from: fromAddress(),
+      to: input.customerEmail,
+      subject: "Your Mango Preorders code",
+      html,
+      text
+    });
 
-  if (error) return { sent: false, error: error.message };
-  return { sent: true, error: null };
+    if (error) return { sent: false, error: resendErrorText(error) };
+    return { sent: true, error: null, id: data?.id ?? null };
+  } catch (error) {
+    return { sent: false, error: resendErrorText(error) };
+  }
 }
 
-async function sendCustomerEmail(input: OrderEmailInput & { subject: string; htmlIntro: string; textIntro: string }) {
+async function sendCustomerEmail(input: OrderEmailInput & { subject: string; htmlIntro: string; textIntro: string }): Promise<EmailResult> {
   if (!input.customerEmail) return { sent: false, error: "Customer email is missing." };
 
   const resend = resendClient();
   if (!resend) return { sent: false, error: "RESEND_API_KEY is missing." };
+  const invalidSender = senderError();
+  if (invalidSender) return { sent: false, error: invalidSender };
 
   const html = `
     <div style="font-family:Arial,sans-serif;line-height:1.55;color:#1f2937">
@@ -99,16 +131,20 @@ async function sendCustomerEmail(input: OrderEmailInput & { subject: string; htm
     `Pickup: ${PICKUP_ADDRESS}`
   ].join("\n\n");
 
-  const { error } = await resend.emails.send({
-    from: fromAddress(),
-    to: input.customerEmail,
-    subject: input.subject,
-    html,
-    text
-  });
+  try {
+    const { data, error } = await resend.emails.send({
+      from: fromAddress(),
+      to: input.customerEmail,
+      subject: input.subject,
+      html,
+      text
+    });
 
-  if (error) return { sent: false, error: error.message };
-  return { sent: true, error: null };
+    if (error) return { sent: false, error: resendErrorText(error) };
+    return { sent: true, error: null, id: data?.id ?? null };
+  } catch (error) {
+    return { sent: false, error: resendErrorText(error) };
+  }
 }
 
 export function sendOrderReceivedEmail(input: OrderEmailInput) {
@@ -127,4 +163,33 @@ export function sendPaymentVerifiedEmail(input: OrderEmailInput) {
     htmlIntro: "Your payment is verified and your preorder is confirmed.",
     textIntro: "Your payment is verified and your preorder is confirmed."
   });
+}
+
+export async function sendAdminTestEmail(input: { to: string }): Promise<EmailResult> {
+  const resend = resendClient();
+  if (!resend) return { sent: false, error: "RESEND_API_KEY is missing in Vercel." };
+  const invalidSender = senderError();
+  if (invalidSender) return { sent: false, error: invalidSender };
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: fromAddress(),
+      to: input.to,
+      subject: "Mango Preorders email test",
+      html: "<p>Email sending is working for Mango Preorders.</p>",
+      text: "Email sending is working for Mango Preorders."
+    });
+    if (error) return { sent: false, error: resendErrorText(error) };
+    return { sent: true, error: null, id: data?.id ?? null };
+  } catch (error) {
+    return { sent: false, error: resendErrorText(error) };
+  }
+}
+
+export function emailConfigStatus() {
+  return {
+    hasApiKey: Boolean(process.env.RESEND_API_KEY),
+    from: fromAddress(),
+    senderError: senderError()
+  };
 }

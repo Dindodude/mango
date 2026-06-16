@@ -21,7 +21,7 @@ import {
   verifyPassword
 } from "@/lib/customer";
 import { hasSupabaseAdminConfig } from "@/lib/env";
-import { sendCustomerSignupCodeEmail, sendOrderReceivedEmail, sendPaymentVerifiedEmail } from "@/lib/email";
+import { sendAdminTestEmail, sendCustomerSignupCodeEmail, sendOrderReceivedEmail, sendPaymentVerifiedEmail } from "@/lib/email";
 import { assertSameOrigin, parseUuid, requestIp } from "@/lib/security";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { cleanText } from "@/lib/utils";
@@ -79,6 +79,10 @@ const customerCompleteSignupSchema = z.object({
 const customerProfileSchema = z.object({
   fullName: z.string().min(2).max(120),
   phone: z.string().min(7).max(30)
+});
+
+const testEmailSchema = z.object({
+  to: z.string().email().max(180)
 });
 
 export type ActionState = { ok: boolean; message: string; orderId?: string; orderNumber?: string };
@@ -603,6 +607,30 @@ export async function logoutAdmin() {
   await assertSameOrigin();
   await clearDirectAdminSession();
   redirect("/admin/login");
+}
+
+export async function sendTestEmail(_: AdminActionState, formData: FormData): Promise<AdminActionState> {
+  try {
+    await assertSameOrigin();
+    const admin = await requireAdmin();
+    const parsed = testEmailSchema.safeParse({
+      to: cleanText(formData.get("to"), 180).toLowerCase()
+    });
+    if (!parsed.success) return { ok: false, message: "Enter a valid email address." };
+
+    const result = await sendAdminTestEmail({ to: parsed.data.to });
+    await logAdminAction({
+      adminEmail: admin.email,
+      action: result.sent ? "email.test_sent" : "email.test_failed",
+      entityType: "email",
+      metadata: { to: parsed.data.to, error: result.error, id: result.id ?? null }
+    });
+
+    if (!result.sent) return { ok: false, message: result.error ?? "Email could not be sent." };
+    return { ok: true, message: `Test email sent${result.id ? ` (${result.id})` : ""}.` };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : "Email test failed." };
+  }
 }
 
 export async function saveProduct(_: AdminActionState, formData: FormData): Promise<AdminActionState> {

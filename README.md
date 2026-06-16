@@ -52,7 +52,7 @@ npm run hash-admin-password
 
 Paste only the generated hash into Vercel or `.env.local`. Do not commit real `.env` files, passwords, service role keys, or Supabase secrets to GitHub.
 
-For email, create a Resend API key and add it as `RESEND_API_KEY`. Set `EMAIL_FROM` to a verified sender/domain in Resend. Resend sends signup codes, order received emails, and payment verified emails. If Resend is not configured, orders still save, but email errors are recorded for admin review.
+For email, create a Resend API key and add it as `RESEND_API_KEY`. Set `EMAIL_FROM` to a verified sender/domain in Resend, for example `Mango Preorders <orders@oakvillemango.com>`. Do not leave `orders@yourdomain.com` in Vercel. Resend sends signup codes, order received emails, and payment verified emails. If Resend is not configured, orders still save, but email errors are recorded for admin review. Use `/admin/reports` to send a test email from production.
 
 Customer accounts do not use Supabase Auth. The app sends a 6-digit Resend code, stores only the hashed code, stores only hashed passwords, and uses a secure HTTP-only customer session cookie. Add `CUSTOMER_SESSION_SECRET` in Vercel; use a different secret than `ADMIN_SESSION_SECRET`.
 
