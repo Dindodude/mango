@@ -18,8 +18,12 @@ type CheckoutDefaults = {
 
 export function CheckoutForm({ defaults, signedIn = false }: { defaults?: CheckoutDefaults; signedIn?: boolean }) {
   const cart = useCart();
-  const [state, formAction] = useActionState(submitPreorder, initialState);
+  const [state, formAction, pending] = useActionState(submitPreorder, initialState);
   const [confirmed, setConfirmed] = useState(false);
+  const [customerName, setCustomerName] = useState(defaults?.customerName ?? "");
+  const [customerEmail, setCustomerEmail] = useState(defaults?.customerEmail ?? "");
+  const [phone, setPhone] = useState(defaults?.phone ?? "");
+  const [notes, setNotes] = useState("");
   const itemsPayload = useMemo(
     () => JSON.stringify(cart.items.map((item) => ({ product_id: item.productId, quantity: item.quantity }))),
     [cart.items]
@@ -43,19 +47,51 @@ export function CheckoutForm({ defaults, signedIn = false }: { defaults?: Checko
         <div className="mt-4 grid gap-4">
           <div>
             <label className="label">Full name</label>
-            <input name="customerName" required defaultValue={defaults?.customerName} className="field mt-1.5" placeholder="Your full name" />
+            <input
+              name="customerName"
+              required
+              value={customerName}
+              onChange={(event) => setCustomerName(event.target.value)}
+              className="field mt-1.5"
+              placeholder="Your full name"
+              autoComplete="name"
+            />
           </div>
           <div>
             <label className="label">Email address</label>
-            <input name="customerEmail" type="email" required defaultValue={defaults?.customerEmail} className="field mt-1.5" placeholder="you@example.com" />
+            <input
+              name="customerEmail"
+              type="email"
+              required
+              value={customerEmail}
+              onChange={(event) => setCustomerEmail(event.target.value)}
+              className="field mt-1.5"
+              placeholder="you@example.com"
+              autoComplete="email"
+            />
           </div>
           <div>
             <label className="label">Phone number</label>
-            <input name="phone" required defaultValue={defaults?.phone} className="field mt-1.5" placeholder="Your phone number" />
+            <input
+              name="phone"
+              required
+              value={phone}
+              onChange={(event) => setPhone(event.target.value)}
+              className="field mt-1.5"
+              placeholder="Your phone number"
+              autoComplete="tel"
+            />
           </div>
           <div>
             <label className="label">Notes</label>
-            <textarea name="notes" rows={3} className="field mt-1.5" placeholder="Optional" />
+            <textarea
+              name="notes"
+              rows={3}
+              value={notes}
+              onChange={(event) => setNotes(event.target.value)}
+              className="field mt-1.5"
+              placeholder="Optional"
+            />
           </div>
         </div>
       </div>
@@ -92,11 +128,11 @@ export function CheckoutForm({ defaults, signedIn = false }: { defaults?: Checko
       </div>
       {state.message && <p className="rounded-md border border-red-100 bg-red-50 p-3 text-sm font-semibold text-red-700">{state.message}</p>}
       <button
-        disabled={!cart.items.length || !confirmed}
+        disabled={!cart.items.length || !confirmed || pending}
         className="btn-primary w-full"
       >
         <ShieldCheck className="h-4 w-4" />
-        I Paid - Submit Preorder
+        {pending ? "Submitting..." : "I Paid - Submit Preorder"}
       </button>
     </form>
   );

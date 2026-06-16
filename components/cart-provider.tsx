@@ -21,9 +21,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const saved = window.localStorage.getItem(key);
     if (saved) {
-      // Cart storage is temporary customer convenience; final orders are saved in Supabase.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setItems(JSON.parse(saved));
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          // Cart storage is temporary customer convenience; final orders are saved in Supabase.
+          // eslint-disable-next-line react-hooks/set-state-in-effect
+          setItems(parsed);
+        }
+      } catch {
+        window.localStorage.removeItem(key);
+      }
     }
   }, []);
 

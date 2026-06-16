@@ -107,19 +107,55 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           <textarea name="admin_notes" defaultValue={order.admin_notes ?? ""} className="field mt-1.5" />
 
           <div className="mt-4 grid gap-2 sm:grid-cols-2">
-            <button name="payment_status" value="Payment Verified" className="btn-primary">Verify Payment</button>
-            <button name="payment_status" value="Payment Issue" className="inline-flex min-h-11 items-center justify-center rounded-md bg-amber-600 px-3 py-2 text-sm font-bold text-white transition hover:bg-amber-700">Payment Not Found</button>
-            <button name="order_status" value="Confirmed" className="btn-secondary">Mark Confirmed</button>
-            <button name="order_status" value="Ready for Pickup" className="btn-secondary">Mark Ready</button>
-            <button name="order_status" value="Completed" className="btn-secondary">Mark Completed</button>
+            <QuickStatusButton
+              paymentStatus="Payment Verified"
+              orderStatus={order.order_status}
+              className="btn-primary"
+            >
+              Verify Payment
+            </QuickStatusButton>
+            <QuickStatusButton
+              paymentStatus="Payment Issue"
+              orderStatus={order.order_status}
+              className="inline-flex min-h-11 items-center justify-center rounded-md bg-amber-600 px-3 py-2 text-sm font-bold text-white transition hover:bg-amber-700"
+            >
+              Payment Not Found
+            </QuickStatusButton>
+            <QuickStatusButton paymentStatus={order.payment_status} orderStatus="Confirmed" className="btn-secondary">
+              Mark Confirmed
+            </QuickStatusButton>
+            <QuickStatusButton paymentStatus={order.payment_status} orderStatus="Ready for Pickup" className="btn-secondary">
+              Mark Ready
+            </QuickStatusButton>
+            <QuickStatusButton paymentStatus={order.payment_status} orderStatus="Completed" className="btn-secondary">
+              Mark Completed
+            </QuickStatusButton>
           </div>
-          <button className="btn-accent mt-4 w-full">
+          <button type="submit" className="btn-accent mt-4 w-full">
             <Save className="h-4 w-4" />
             Save changes
           </button>
         </form>
       </div>
     </div>
+  );
+}
+
+function QuickStatusButton({
+  paymentStatus,
+  orderStatus,
+  className,
+  children
+}: {
+  paymentStatus: string;
+  orderStatus: string;
+  className: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <button type="submit" name="quick_action" value={`${paymentStatus}:${orderStatus}`} className={className}>
+      {children}
+    </button>
   );
 }
 

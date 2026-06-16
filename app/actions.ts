@@ -511,27 +511,39 @@ export async function submitPreorder(_: ActionState, formData: FormData): Promis
     const nextSequence = Number(latestOrder?.order_sequence ?? 0) + 1;
     const newOrderNumber = `${activeBatch.batch_code}-${String(nextSequence).padStart(3, "0")}`;
     const successToken = crypto.randomBytes(24).toString("base64url");
-    const { data: order, error: orderError } = await supabase
+    const orderPayload: Record<string, string | number | null> = {
+      batch_id: activeBatch.id,
+      order_sequence: nextSequence,
+      order_number: newOrderNumber,
+      success_token: successToken,
+      customer_name: parsed.data.customerName,
+      customer_email: parsed.data.customerEmail,
+      phone: parsed.data.phone,
+      notes: parsed.data.notes ?? null,
+      subtotal_amount: subtotal,
+      total_amount: subtotal,
+      total_cost: totalCost,
+      total_profit: totalProfit,
+      payment_status: "Payment Claimed by Customer",
+      order_status: "Submitted"
+    };
+    if (customerId) orderPayload.customer_id = customerId;
+    let { data: order, error: orderError } = await supabase
       .from("orders")
-      .insert({
-        batch_id: activeBatch.id,
-        order_sequence: nextSequence,
-        order_number: newOrderNumber,
-        success_token: successToken,
-        customer_id: customerId,
-        customer_name: parsed.data.customerName,
-        customer_email: parsed.data.customerEmail,
-        phone: parsed.data.phone,
-        notes: parsed.data.notes ?? null,
-        subtotal_amount: subtotal,
-        total_amount: subtotal,
-        total_cost: totalCost,
-        total_profit: totalProfit,
-        payment_status: "Payment Claimed by Customer",
-        order_status: "Submitted"
-      })
+      .insert(orderPayload)
       .select("id,order_number")
       .single();
+
+    if (orderError && customerId && orderError.message.toLowerCase().includes("customer_id")) {
+      delete orderPayload.customer_id;
+      const retry = await supabase
+        .from("orders")
+        .insert(orderPayload)
+        .select("id,order_number")
+        .single();
+      order = retry.data;
+      orderError = retry.error;
+    }
 
     if (orderError?.code === "23505") continue;
     if (orderError || !order) return { ok: false, message: orderError?.message ?? "Order could not be created." };
@@ -696,8 +708,14 @@ export async function updateOrder(formData: FormData) {
   const orderId = parseUuid(formData.get("id"), "order ID");
   const paymentValues = formData.getAll("payment_status");
   const orderValues = formData.getAll("order_status");
-  const paymentStatus = paymentStatusSchema.parse(cleanText(paymentValues[paymentValues.length - 1], 60));
-  const orderStatus = orderStatusSchema.parse(cleanText(orderValues[orderValues.length - 1], 60));
+  const quickAction = cleanText(formData.get("quick_action"), 140);
+  const [quickPaymentStatus, quickOrderStatus] = quickAction ? quickAction.split(":") : [];
+  const paymentStatus = paymentStatusSchema.parse(
+    quickPaymentStatus || cleanText(paymentValues[paymentValues.length - 1], 60)
+  );
+  const orderStatus = orderStatusSchema.parse(
+    quickOrderStatus || cleanText(orderValues[orderValues.length - 1], 60)
+  );
   const supabase = createAdminClient();
   const { data: existingOrder } = await supabase
     .from("orders")
