@@ -12,6 +12,7 @@ export function ReorderButton({ lines }: { lines: CartLine[] }) {
 
   return (
     <button
+      type="button"
       className="btn-accent w-full sm:w-auto"
       onClick={() => {
         lines.forEach((line) => cart.add({ productId: line.productId, name: line.name, price: line.price, category: line.category }, line.quantity));

@@ -12,7 +12,7 @@ export function EmailTestForm({ defaultEmail }: { defaultEmail: string }) {
   return (
     <form action={formAction} className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
       <input name="to" type="email" required defaultValue={defaultEmail} className="field" placeholder="you@example.com" />
-      <button disabled={pending} className="btn-primary">
+      <button type="submit" disabled={pending} className="btn-primary">
         <MailCheck className="h-4 w-4" />
         {pending ? "Sending..." : "Send test"}
       </button>

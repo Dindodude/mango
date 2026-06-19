@@ -31,11 +31,11 @@ export function CheckoutForm({ defaults, signedIn = false }: { defaults?: Checko
 
   return (
     <form
-      action={(formData) => {
+      action={formAction}
+      onSubmit={(event) => {
         if (!window.confirm("Please only continue if you already sent the e-transfer. Orders marked paid without payment may be cancelled.")) {
-          return;
+          event.preventDefault();
         }
-        formAction(formData);
       }}
       className="surface space-y-5 p-5 sm:p-6"
     >
@@ -128,6 +128,7 @@ export function CheckoutForm({ defaults, signedIn = false }: { defaults?: Checko
       </div>
       {state.message && <p className="rounded-md border border-red-100 bg-red-50 p-3 text-sm font-semibold text-red-700">{state.message}</p>}
       <button
+        type="submit"
         disabled={!cart.items.length || !confirmed || pending}
         className="btn-primary w-full"
       >

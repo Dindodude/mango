@@ -1,6 +1,9 @@
-import { Copy, CreditCard, Mail, PackageCheck, Save } from "lucide-react";
+import Link from "next/link";
+import { ArrowLeft, Copy, CreditCard, Mail, PackageCheck, Save } from "lucide-react";
 import { updateOrder } from "@/app/actions";
-import { StatusBadge } from "@/components/admin-ui";
+import { AdminOrderActions } from "@/components/admin-order-actions";
+import { AdminPanel, StatusBadge } from "@/components/admin-ui";
+import { CopyButton } from "@/components/copy-button";
 import { orderStatuses, paymentStatuses, PICKUP_ADDRESS } from "@/lib/constants";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { money } from "@/lib/utils";
@@ -22,6 +25,10 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
     <div className="admin-shell max-w-6xl">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
+          <Link href="/admin/orders" className="mb-4 inline-flex items-center gap-2 text-sm font-bold text-leaf-700 hover:text-leaf-900">
+            <ArrowLeft className="h-4 w-4" />
+            Back to orders
+          </Link>
           <p className="eyebrow">Order detail</p>
           <h1 className="mt-2 text-3xl font-black text-stone-950 sm:text-4xl">{order.order_number}</h1>
           <p className="mt-1 text-sm font-semibold text-stone-600">
@@ -35,12 +42,9 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
         </div>
       </div>
 
-      <div className="mt-6 grid gap-5 lg:grid-cols-[1fr_0.9fr]">
-        <section className="surface p-5">
-          <div className="flex items-center justify-between">
-            <h2 className="font-black text-stone-950">Item Breakdown</h2>
-            <PackageCheck className="h-5 w-5 text-leaf-700" />
-          </div>
+      <div className="mt-6 grid gap-5 lg:grid-cols-[1fr_380px]">
+        <div className="space-y-5">
+        <AdminPanel title="Item Breakdown" action={<PackageCheck className="h-5 w-5 text-leaf-700" />}>
           <div className="mt-4 space-y-3">
             {order.order_items.map((item: any) => (
               <div key={item.id} className="rounded-md border border-stone-100 bg-stone-50 p-3 text-sm">
@@ -65,7 +69,9 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
             <Row label="Batch" value={order.batches?.batch_name} />
             <Row label="Customer notes" value={order.notes || "None"} />
           </div>
-          <div className="mt-4 rounded-lg border border-leaf-100 bg-leaf-50 p-4 text-sm">
+        </AdminPanel>
+
+          <div className="surface rounded-lg border border-leaf-100 bg-leaf-50 p-4 text-sm">
             <div className="mb-3 flex items-center gap-2">
               <Mail className="h-4 w-4 text-leaf-700" />
               <h3 className="font-black text-stone-950">Email Status</h3>
@@ -80,14 +86,31 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
               <h3 className="font-black text-stone-950">Confirmation Message</h3>
             </div>
             <textarea readOnly value={message} className="field h-28 bg-mango-50" />
+            <div className="mt-2">
+              <CopyButton label="Copy confirmation" value={message} />
+            </div>
           </div>
-        </section>
+        </div>
+
+        <aside className="space-y-5 lg:sticky lg:top-28 lg:self-start">
+          <section className="surface p-5">
+            <div className="flex items-center justify-between">
+              <h2 className="font-black text-stone-950">Next Action</h2>
+              <CreditCard className="h-5 w-5 text-leaf-700" />
+            </div>
+            <p className="mt-2 text-sm font-semibold text-stone-600">
+              Use these for fast updates. Notes are kept unchanged.
+            </p>
+            <div className="mt-4">
+              <AdminOrderActions orderId={order.id} paymentStatus={order.payment_status} orderStatus={order.order_status} />
+            </div>
+          </section>
 
         <form action={updateOrder} className="surface p-5">
           <input type="hidden" name="id" value={order.id} />
           <div className="flex items-center justify-between">
-            <h2 className="font-black text-stone-950">Update Order</h2>
-            <CreditCard className="h-5 w-5 text-leaf-700" />
+            <h2 className="font-black text-stone-950">Detailed Update</h2>
+            <Save className="h-5 w-5 text-leaf-700" />
           </div>
 
           <label className="label mt-5 block">Payment status</label>
@@ -106,56 +129,14 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           <label className="label mt-4 block">Admin notes</label>
           <textarea name="admin_notes" defaultValue={order.admin_notes ?? ""} className="field mt-1.5" />
 
-          <div className="mt-4 grid gap-2 sm:grid-cols-2">
-            <QuickStatusButton
-              paymentStatus="Payment Verified"
-              orderStatus={order.order_status}
-              className="btn-primary"
-            >
-              Verify Payment
-            </QuickStatusButton>
-            <QuickStatusButton
-              paymentStatus="Payment Issue"
-              orderStatus={order.order_status}
-              className="inline-flex min-h-11 items-center justify-center rounded-md bg-amber-600 px-3 py-2 text-sm font-bold text-white transition hover:bg-amber-700"
-            >
-              Payment Not Found
-            </QuickStatusButton>
-            <QuickStatusButton paymentStatus={order.payment_status} orderStatus="Confirmed" className="btn-secondary">
-              Mark Confirmed
-            </QuickStatusButton>
-            <QuickStatusButton paymentStatus={order.payment_status} orderStatus="Ready for Pickup" className="btn-secondary">
-              Mark Ready
-            </QuickStatusButton>
-            <QuickStatusButton paymentStatus={order.payment_status} orderStatus="Completed" className="btn-secondary">
-              Mark Completed
-            </QuickStatusButton>
-          </div>
           <button type="submit" className="btn-accent mt-4 w-full">
             <Save className="h-4 w-4" />
             Save changes
           </button>
         </form>
+        </aside>
       </div>
     </div>
-  );
-}
-
-function QuickStatusButton({
-  paymentStatus,
-  orderStatus,
-  className,
-  children
-}: {
-  paymentStatus: string;
-  orderStatus: string;
-  className: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <button type="submit" name="quick_action" value={`${paymentStatus}:${orderStatus}`} className={className}>
-      {children}
-    </button>
   );
 }
 

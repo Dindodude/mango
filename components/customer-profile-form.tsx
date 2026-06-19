@@ -26,7 +26,7 @@ export function CustomerProfileForm({ fullName, phone }: { fullName?: string | n
           {state.message}
         </p>
       )}
-      <button className="btn-secondary mt-4">Save contact</button>
+      <button type="submit" className="btn-secondary mt-4">Save contact</button>
     </form>
   );
 }

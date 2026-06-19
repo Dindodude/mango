@@ -1,5 +1,5 @@
 import { Download, LineChart, PackageSearch, Truck } from "lucide-react";
-import { AdminSectionHeader } from "@/components/admin-ui";
+import { AdminPageHeader, AdminPanel } from "@/components/admin-ui";
 import { CopyButton } from "@/components/copy-button";
 import { EmailTestForm } from "@/components/email-test-form";
 import { emailConfigStatus } from "@/lib/email";
@@ -45,45 +45,50 @@ export default async function ReportsPage() {
 
   return (
     <div className="admin-shell">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <AdminSectionHeader eyebrow="Analytics" title="Reports" description="Revenue, profit, supplier summaries, and exports." />
-        <div className="flex flex-wrap gap-2">
+      <AdminPageHeader
+        eyebrow="Analytics"
+        title="Reports"
+        description="Revenue, profit, supplier summaries, email health, and exports."
+        action={(
+          <>
           {["orders", "unpaid"].map((type) => (
             <a key={type} href={`/api/admin/export/${type}`} className="btn-secondary min-h-10 px-3 py-2 capitalize">
               <Download className="h-4 w-4" /> {type}
             </a>
           ))}
           {activeBatch && <a href={`/api/admin/export/supplier?batchId=${activeBatch.id}`} className="btn-primary min-h-10 px-3 py-2"><Truck className="h-4 w-4" /> Supplier CSV</a>}
-        </div>
-      </div>
+          </>
+        )}
+      />
 
-      <section className="surface mt-5 p-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="font-black text-stone-950">Supplier Summary</h2>
-            <p className="mt-1 text-sm font-semibold text-stone-600">Verified paid orders only{activeBatch ? ` for ${activeBatch.batch_name}` : ""}.</p>
-          </div>
+      <div className="mt-5">
+        <AdminPanel
+          title="Supplier Summary"
+          description={`Verified paid orders only${activeBatch ? ` for ${activeBatch.batch_name}` : ""}.`}
+          action={(
           <div className="w-full sm:w-auto">
             <CopyButton label="Copy supplier text" value={supplierText || "No supplier items yet."} />
           </div>
-        </div>
-        <pre className="mt-4 whitespace-pre-wrap rounded-lg border border-stone-200 bg-stone-50 p-4 text-sm font-semibold text-stone-800">{supplierText || "No supplier items yet."}</pre>
-      </section>
+          )}
+        >
+          <pre className="max-h-[420px] overflow-auto whitespace-pre-wrap rounded-lg border border-stone-200 bg-stone-50 p-4 text-sm font-semibold text-stone-800 wrap-anywhere">{supplierText || "No supplier items yet."}</pre>
+        </AdminPanel>
+      </div>
 
-      <section className="surface mt-5 p-5">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h2 className="font-black text-stone-950">Email Sending</h2>
-            <p className="mt-1 text-sm font-semibold text-stone-600">Test Resend from this deployed site and see configuration issues.</p>
-          </div>
+      <div className="mt-5">
+      <AdminPanel
+        title="Email Sending"
+        description="Test Resend from this deployed site and see configuration issues."
+        action={(
           <span className={emailConfig.hasApiKey && !emailConfig.senderError ? "badge-good" : "badge-warm"}>
             {emailConfig.hasApiKey && !emailConfig.senderError ? "Configured" : "Needs setup"}
           </span>
-        </div>
+        )}
+      >
         <div className="mt-4 grid gap-3 rounded-lg border border-stone-200 bg-stone-50 p-4 text-sm font-semibold text-stone-700 sm:grid-cols-2">
           <p>Resend key: {emailConfig.hasApiKey ? "Present" : "Missing"}</p>
-          <p>From: {emailConfig.from}</p>
-          {emailConfig.senderError && <p className="sm:col-span-2 text-red-700">{emailConfig.senderError}</p>}
+          <p className="wrap-anywhere">From: {emailConfig.from}</p>
+          {emailConfig.senderError && <p className="wrap-anywhere text-red-700 sm:col-span-2">{emailConfig.senderError}</p>}
         </div>
         <EmailTestForm defaultEmail={process.env.ADMIN_EMAIL ?? ""} />
         {emailFailures.length > 0 && (
@@ -92,12 +97,13 @@ export default async function ReportsPage() {
             {emailFailures.map((order: any) => (
               <div key={order.id} className="rounded-md border border-red-100 bg-red-50 p-3 text-sm">
                 <p className="font-black text-stone-950">{order.order_number}</p>
-                <p className="mt-1 font-semibold text-red-700">{order.last_email_error}</p>
+                <p className="mt-1 font-semibold text-red-700 wrap-anywhere">{order.last_email_error}</p>
               </div>
             ))}
           </div>
         )}
-      </section>
+      </AdminPanel>
+      </div>
 
       <div className="mt-5 grid gap-5 lg:grid-cols-2">
         <ReportTable icon={<LineChart className="h-5 w-5 text-leaf-700" />} title="Revenue by Batch" rows={byBatch} columns={["name", "orders", "revenue", "profit", "outstanding"]} />

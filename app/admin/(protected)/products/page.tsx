@@ -1,52 +1,71 @@
-import { Plus, Trash2 } from "lucide-react";
+import { DollarSign, Plus, Trash2 } from "lucide-react";
 import { deleteProduct } from "@/app/actions";
 import { AdminProductForm } from "@/components/admin-product-form";
+import { AdminPageHeader, AdminPanel } from "@/components/admin-ui";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { money } from "@/lib/utils";
 
 export default async function ProductsPage() {
   const { data: products } = await createAdminClient().from("products").select("*").order("display_order");
+  const activeCount = products?.filter((product) => product.active).length ?? 0;
   return (
     <div className="admin-shell">
-      <div>
-        <p className="eyebrow">Catalog</p>
-        <h1 className="mt-2 text-3xl font-black text-stone-950 sm:text-4xl">Products</h1>
-        <p className="mt-1 text-sm font-semibold text-stone-600">Manage preorder items, prices, costs, and status.</p>
-      </div>
+      <AdminPageHeader
+        eyebrow="Catalog"
+        title="Products"
+        description={`${products?.length ?? 0} products, ${activeCount} active. No inventory quantities are tracked.`}
+      />
 
-      <section className="surface mt-5 p-5">
-        <div className="flex items-center gap-2">
-          <Plus className="h-5 w-5 text-leaf-700" />
-          <h2 className="font-black text-stone-950">Add Product</h2>
-        </div>
+      <AdminPanel
+        title="Add Product"
+        description="Add preorder items with selling price, cost, and category."
+        action={<Plus className="h-5 w-5 text-leaf-700" />}
+      >
         <AdminProductForm />
-      </section>
+      </AdminPanel>
 
-      <div className="mt-5 grid gap-4 lg:grid-cols-2">
+      <div className="mt-5 space-y-3">
         {products?.map((product) => (
-          <section key={product.id} className="surface overflow-hidden">
-            <div className="flex items-center gap-4 border-b border-stone-100 p-4">
-              <div className="min-w-0">
-                <h2 className="truncate font-black text-stone-950">{product.name}</h2>
-                <p className="text-sm font-semibold text-stone-500">
-                  {product.category} - {money(product.selling_price)}
-                </p>
+          <details key={product.id} className="surface group overflow-hidden">
+            <summary className="flex cursor-pointer list-none flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="truncate font-black text-stone-950">{product.name}</h2>
+                  <span className={product.active ? "badge-good" : "badge"}>{product.active ? "Active" : "Inactive"}</span>
+                </div>
+                <p className="mt-1 text-sm font-semibold text-stone-500">{product.category}</p>
               </div>
-              <span className={product.active ? "badge-good ml-auto" : "badge ml-auto"}>{product.active ? "Active" : "Inactive"}</span>
-            </div>
-            <div className="p-5">
+              <div className="grid grid-cols-3 gap-2 text-right text-sm sm:min-w-[360px]">
+                <MiniStat label="Sell" value={money(product.selling_price)} />
+                <MiniStat label="Cost" value={money(product.cost_price)} />
+                <MiniStat label="Profit" value={money(Number(product.selling_price) - Number(product.cost_price))} good />
+              </div>
+            </summary>
+            <div className="border-t border-stone-100 p-5">
               <AdminProductForm product={product} />
               <form action={deleteProduct} className="mt-3">
                 <input type="hidden" name="id" value={product.id} />
-                <button className="inline-flex items-center gap-2 rounded-md border border-red-100 bg-red-50 px-3 py-2 text-sm font-bold text-red-700 transition hover:bg-red-100">
+                <button type="submit" className="inline-flex min-h-10 items-center gap-2 rounded-md border border-red-100 bg-red-50 px-3 py-2 text-sm font-bold text-red-700 transition hover:bg-red-100">
                   <Trash2 className="h-4 w-4" />
                   Delete
                 </button>
               </form>
             </div>
-          </section>
+          </details>
         ))}
       </div>
+    </div>
+  );
+}
+
+function MiniStat({ label, value, good = false }: { label: string; value: React.ReactNode; good?: boolean }) {
+  return (
+    <div className="rounded-md bg-stone-50 px-3 py-2">
+      <p className="text-[10px] font-black uppercase tracking-wide text-stone-500">{label}</p>
+      <p className={`mt-1 flex items-center justify-end gap-1 font-black ${good ? "text-leaf-700" : "text-stone-950"}`}>
+        {good && <DollarSign className="h-3 w-3" />}
+        {value}
+      </p>
     </div>
   );
 }

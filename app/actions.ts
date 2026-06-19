@@ -762,8 +762,12 @@ export async function updateOrder(formData: FormData) {
 
   const payload: Record<string, string> = { payment_status: paymentStatus, order_status: orderStatus };
   if (admin.role !== "staff") {
-    payload.payment_reference_notes = cleanText(formData.get("payment_reference_notes"), 700);
-    payload.admin_notes = cleanText(formData.get("admin_notes"), 1000);
+    if (formData.has("payment_reference_notes")) {
+      payload.payment_reference_notes = cleanText(formData.get("payment_reference_notes"), 700);
+    }
+    if (formData.has("admin_notes")) {
+      payload.admin_notes = cleanText(formData.get("admin_notes"), 1000);
+    }
   }
   const emailUpdate: Record<string, string | null> = {};
   if (

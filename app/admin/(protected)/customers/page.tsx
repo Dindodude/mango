@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Search, UsersRound } from "lucide-react";
-import { AdminSectionHeader, EmptyState, MetricCard, StatusBadge } from "@/components/admin-ui";
+import { AdminPageHeader, EmptyState, MetricCard, StatusBadge } from "@/components/admin-ui";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { money } from "@/lib/utils";
 
@@ -39,7 +39,7 @@ export default async function AdminCustomersPage({ searchParams }: { searchParam
 
   return (
     <div className="admin-shell">
-      <AdminSectionHeader eyebrow="Customer lookup" title="Customers" description="Find repeat customers and order history fast." />
+      <AdminPageHeader eyebrow="Customer lookup" title="Customers" description="Find repeat customers and order history fast." />
 
       <div className="mt-5 grid gap-3 md:grid-cols-3">
         <MetricCard label="Customers shown" value={customers.length} />
@@ -47,12 +47,12 @@ export default async function AdminCustomersPage({ searchParams }: { searchParam
         <MetricCard label="Customer revenue" value={money(customers.reduce((sum: number, customer: any) => sum + customer.revenue, 0))} />
       </div>
 
-      <form className="surface mt-5 flex gap-3 p-4">
+      <form className="surface mt-5 flex flex-col gap-3 p-4 sm:flex-row">
         <label className="relative flex-1">
           <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-stone-400" />
           <input name="search" defaultValue={resolvedSearchParams.search ?? ""} placeholder="Search name, phone, or email" className="field pl-9" />
         </label>
-        <button className="btn-secondary">Search</button>
+        <button type="submit" className="btn-secondary">Search</button>
       </form>
 
       <div className="mt-5 grid gap-4">

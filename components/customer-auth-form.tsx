@@ -47,7 +47,7 @@ function CustomerLoginForm() {
         <input name="password" type="password" required minLength={6} className="field mt-1.5" placeholder="Your password" />
       </label>
       <StatusMessage state={state} />
-      <button className="btn-primary w-full">Sign in</button>
+      <button type="submit" className="btn-primary w-full">Sign in</button>
       <p className="text-center text-sm font-semibold text-stone-600">
         Need an account?{" "}
         <Link className="text-leaf-700 hover:text-leaf-900" href="/account/signup">
@@ -116,7 +116,7 @@ function CustomerSignupForm() {
             />
           </label>
           <StatusMessage state={sendState} />
-          <button disabled={pending} className="btn-primary w-full">{pending ? "Sending..." : "Send code"}</button>
+          <button type="submit" disabled={pending} className="btn-primary w-full">{pending ? "Sending..." : "Send code"}</button>
         </form>
       )}
 
@@ -138,7 +138,7 @@ function CustomerSignupForm() {
             />
           </label>
           <StatusMessage state={verifyState} />
-          <button disabled={pending} className="btn-primary w-full">{pending ? "Checking..." : "Verify code"}</button>
+          <button type="submit" disabled={pending} className="btn-primary w-full">{pending ? "Checking..." : "Verify code"}</button>
           <button type="button" onClick={() => { setStep("email"); setSendState(initialState); setVerifyState(initialState); }} className="btn-secondary w-full">
             Use a different email
           </button>
@@ -165,7 +165,7 @@ function CustomerSignupForm() {
             <input name="password" type="password" required minLength={6} className="field mt-1.5" placeholder="At least 6 characters" />
           </label>
           <StatusMessage state={completeState} />
-          <button className="btn-primary w-full">Create account</button>
+          <button type="submit" className="btn-primary w-full">Create account</button>
         </form>
       )}
 

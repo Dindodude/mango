@@ -27,7 +27,7 @@ export default function AdminLoginPage() {
           </div>
         </div>
         {state.message && <p className="mt-4 rounded-md border border-red-100 bg-red-50 p-3 text-sm font-semibold text-red-700">{state.message}</p>}
-        <button className="btn-primary mt-5 w-full">
+        <button type="submit" className="btn-primary mt-5 w-full">
           <LockKeyhole className="h-4 w-4" />
           Sign in
         </button>

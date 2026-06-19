@@ -1,6 +1,6 @@
 import { CalendarPlus, Download } from "lucide-react";
 import { AdminBatchForm } from "@/components/admin-batch-form";
-import { AdminSectionHeader, MetricCard, StatusBadge } from "@/components/admin-ui";
+import { AdminPageHeader, AdminPanel, MetricCard, StatusBadge } from "@/components/admin-ui";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { money } from "@/lib/utils";
 
@@ -23,43 +23,43 @@ export default async function BatchesPage() {
 
   return (
     <div className="admin-shell">
-      <AdminSectionHeader eyebrow="Preorder windows" title="Batches" description="Only one batch can be active at a time." />
+      <AdminPageHeader eyebrow="Preorder windows" title="Batches" description="Only one batch can be active at a time. Arrival date can be written like June 15 2026." />
 
-      <section className="surface mt-5 p-5">
-        <div className="flex items-center gap-2">
-          <CalendarPlus className="h-5 w-5 text-leaf-700" />
-          <h2 className="font-black text-stone-950">Create Batch</h2>
-        </div>
+      <AdminPanel title="Create Batch" description="Create the next preorder window from one arrival date." action={<CalendarPlus className="h-5 w-5 text-leaf-700" />}>
         <AdminBatchForm />
-      </section>
+      </AdminPanel>
 
-      <div className="mt-5 grid gap-4 lg:grid-cols-2">
+      <div className="mt-5 space-y-4">
         {batches?.map((batch) => {
           const batchStats = stats(batch.id);
           return (
-            <section key={batch.id} className="surface p-5">
-              <div className="mb-4 flex items-start justify-between gap-3">
+            <details key={batch.id} className="surface group overflow-hidden" open={batch.status === "Active"}>
+              <summary className="flex cursor-pointer list-none flex-col gap-4 p-5 xl:flex-row xl:items-center xl:justify-between">
                 <div>
-                  <h2 className="font-black text-stone-950">{batch.batch_name}</h2>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="font-black text-stone-950">{batch.batch_name}</h2>
+                    <StatusBadge status={batch.status} />
+                  </div>
                   <p className="text-sm font-semibold text-stone-500">{batch.batch_code}</p>
                   <p className="mt-1 text-sm text-stone-600">Arrival {batch.expected_arrival_date} - Cutoff {batch.cutoff_date}</p>
                 </div>
-                <StatusBadge status={batch.status} />
+                <div className="grid gap-2 sm:grid-cols-4 xl:min-w-[620px]">
+                  <MetricCard label="Orders" value={batchStats.orders} />
+                  <MetricCard label="Paid" value={batchStats.paid} tone="good" />
+                  <MetricCard label="Revenue" value={money(batchStats.revenue)} />
+                  <MetricCard label="Profit" value={money(batchStats.profit)} tone="good" />
+                </div>
+              </summary>
+              <div className="border-t border-stone-100 p-5">
+                <div className="mb-4 grid gap-2 sm:grid-cols-4">
+                  <ExportLink href={`/api/admin/export/batch-paid?batchId=${batch.id}`} label="Paid CSV" />
+                  <ExportLink href={`/api/admin/export/supplier?batchId=${batch.id}`} label="Supplier" />
+                  <ExportLink href={`/api/admin/export/pickup?batchId=${batch.id}`} label="Pickup" />
+                  <ExportLink href={`/api/admin/export/problem?batchId=${batch.id}`} label="Problems" />
+                </div>
+                <AdminBatchForm batch={batch} />
               </div>
-              <div className="grid gap-2 sm:grid-cols-4">
-                <MetricCard label="Orders" value={batchStats.orders} />
-                <MetricCard label="Paid" value={batchStats.paid} tone="good" />
-                <MetricCard label="Revenue" value={money(batchStats.revenue)} />
-                <MetricCard label="Profit" value={money(batchStats.profit)} tone="good" />
-              </div>
-              <div className="my-4 grid gap-2 sm:grid-cols-4">
-                <ExportLink href={`/api/admin/export/batch-paid?batchId=${batch.id}`} label="Paid CSV" />
-                <ExportLink href={`/api/admin/export/supplier?batchId=${batch.id}`} label="Supplier" />
-                <ExportLink href={`/api/admin/export/pickup?batchId=${batch.id}`} label="Pickup" />
-                <ExportLink href={`/api/admin/export/problem?batchId=${batch.id}`} label="Problems" />
-              </div>
-              <AdminBatchForm batch={batch} />
-            </section>
+            </details>
           );
         })}
       </div>

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Download, Filter, Search } from "lucide-react";
-import { AdminSectionHeader, EmptyState, StatusBadge } from "@/components/admin-ui";
+import { AdminOrderActions } from "@/components/admin-order-actions";
+import { AdminPageHeader, EmptyState, StatusBadge } from "@/components/admin-ui";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { money } from "@/lib/utils";
 
@@ -35,25 +36,31 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
   const groupedOrders = Object.values(
     filtered.reduce<Record<string, any>>((acc, order) => {
       const batchName = order.batches?.batch_name ?? "No batch";
-      acc[batchName] ??= { batchName, batchId: order.batches?.id, orders: [], revenue: 0, profit: 0, quantity: 0 };
+      acc[batchName] ??= { batchName, batchId: order.batches?.id, orders: [], revenue: 0, profit: 0, quantity: 0, paid: 0, needsPayment: 0 };
       acc[batchName].orders.push(order);
       acc[batchName].revenue += Number(order.total_amount);
       acc[batchName].profit += Number(order.total_profit);
       acc[batchName].quantity += (order.order_items ?? []).reduce((sum: number, item: any) => sum + Number(item.quantity), 0);
+      acc[batchName].paid += order.payment_status === "Payment Verified" ? 1 : 0;
+      acc[batchName].needsPayment += order.payment_status === "Payment Claimed by Customer" || order.payment_status === "Payment Issue" ? 1 : 0;
       return acc;
     }, {})
   );
 
   return (
     <div className="admin-shell">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <AdminSectionHeader eyebrow="Fulfillment" title="Orders" description={`${filtered.length} orders shown`} />
-        <a href={`/api/admin/export/orders?${new URLSearchParams(resolvedSearchParams as Record<string, string>).toString()}`} className="btn-primary">
-          <Download className="h-4 w-4" /> Export CSV
-        </a>
-      </div>
+      <AdminPageHeader
+        eyebrow="Fulfillment"
+        title="Orders"
+        description={`${filtered.length} orders shown. Use batch sections for supplier and pickup exports.`}
+        action={(
+          <a href={`/api/admin/export/orders?${new URLSearchParams(resolvedSearchParams as Record<string, string>).toString()}`} className="btn-primary">
+            <Download className="h-4 w-4" /> Export CSV
+          </a>
+        )}
+      />
 
-      <div className="mt-5 flex flex-wrap gap-2">
+      <div className="admin-nav-scroll -mx-1 mt-5 flex gap-2 overflow-x-auto px-1">
         {[
           ["", "All"],
           ["needs-payment", "Needs payment check"],
@@ -62,7 +69,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
           ["completed", "Completed"],
           ["problem", "Problem"]
         ].map(([value, label]) => (
-          <Link key={value || "all"} href={`/admin/orders${value ? `?quick=${value}` : ""}`} className={quick === value ? "btn-primary min-h-10 px-3 py-2" : "btn-secondary min-h-10 px-3 py-2"}>
+          <Link key={value || "all"} href={`/admin/orders${value ? `?quick=${value}` : ""}`} className={quick === value ? "btn-primary min-h-10 shrink-0 px-3 py-2" : "btn-secondary min-h-10 shrink-0 px-3 py-2"}>
             {label}
           </Link>
         ))}
@@ -85,7 +92,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
           <option value="newest">Newest</option>
           <option value="oldest">Oldest</option>
         </select>
-        <button className="btn-secondary">
+        <button type="submit" className="btn-secondary">
           <Filter className="h-4 w-4" />
           Apply
         </button>
@@ -97,7 +104,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
             <div className="flex flex-col gap-3 border-b border-stone-200 bg-stone-50 px-4 py-4 xl:flex-row xl:items-center xl:justify-between">
               <div>
                 <h2 className="text-lg font-black text-stone-950">{group.batchName}</h2>
-                <p className="mt-1 text-sm font-semibold text-stone-600">{group.orders.length} orders - {group.quantity} items - {money(group.revenue)}</p>
+                <p className="mt-1 text-sm font-semibold text-stone-600">{group.orders.length} orders - {group.paid} paid - {group.needsPayment} need check - {group.quantity} items - {money(group.revenue)}</p>
               </div>
               {group.batchId && (
                 <div className="flex flex-wrap gap-2">
@@ -116,7 +123,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
             <div className="hidden overflow-x-auto md:block">
               <table className="data-table min-w-[1120px]">
                 <thead>
-                  <tr>{["Order", "Customer", "Items", "Total", "Profit", "Payment", "Status", "Submitted"].map((head) => <th key={head}>{head}</th>)}</tr>
+                  <tr>{["Order", "Customer", "Items", "Total", "Profit", "Payment", "Status", "Submitted", "Open"].map((head) => <th key={head}>{head}</th>)}</tr>
                 </thead>
                 <tbody>
                   {group.orders.map((order: any) => (
@@ -129,6 +136,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
                       <td><StatusBadge status={order.payment_status} /></td>
                       <td><StatusBadge status={order.order_status} /></td>
                       <td>{new Date(order.created_at).toLocaleDateString()}</td>
+                      <td><Link className="btn-secondary min-h-9 px-3 py-1.5 text-xs" href={`/admin/orders/${order.id}`}>Open</Link></td>
                     </tr>
                   ))}
                 </tbody>
@@ -148,20 +156,25 @@ function ExportButton({ href, label }: { href: string; label: string }) {
 
 function MobileOrderCard({ order }: { order: any }) {
   return (
-    <Link href={`/admin/orders/${order.id}`} className={`rounded-lg border p-4 shadow-crisp ${order.payment_status === "Payment Claimed by Customer" ? "border-amber-200 bg-amber-50" : "border-stone-200 bg-white"}`}>
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="font-black text-stone-950">{order.order_number}</p>
-          <p className="text-sm font-semibold text-stone-600">{order.customer_name}</p>
-          <p className="text-xs text-stone-500">{order.phone}</p>
+    <article className={`rounded-lg border p-4 shadow-crisp ${order.payment_status === "Payment Claimed by Customer" ? "border-amber-200 bg-amber-50" : "border-stone-200 bg-white"}`}>
+      <Link href={`/admin/orders/${order.id}`} className="block">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="font-black text-stone-950">{order.order_number}</p>
+            <p className="text-sm font-semibold text-stone-600">{order.customer_name}</p>
+            <p className="text-xs text-stone-500">{order.phone}</p>
+          </div>
+          <p className="font-black text-stone-950">{money(order.total_amount)}</p>
         </div>
-        <p className="font-black text-stone-950">{money(order.total_amount)}</p>
+        <p className="mt-3 text-sm text-stone-700">{order.order_items?.map((item: any) => `${item.product_name_snapshot} x${item.quantity}`).join(", ")}</p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <StatusBadge status={order.payment_status} />
+          <StatusBadge status={order.order_status} />
+        </div>
+      </Link>
+      <div className="mt-4 border-t border-stone-200 pt-3">
+        <AdminOrderActions orderId={order.id} paymentStatus={order.payment_status} orderStatus={order.order_status} compact />
       </div>
-      <p className="mt-3 text-sm text-stone-700">{order.order_items?.map((item: any) => `${item.product_name_snapshot} x${item.quantity}`).join(", ")}</p>
-      <div className="mt-3 flex flex-wrap gap-2">
-        <StatusBadge status={order.payment_status} />
-        <StatusBadge status={order.order_status} />
-      </div>
-    </Link>
+    </article>
   );
 }
