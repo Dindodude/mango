@@ -24,6 +24,36 @@ html {
   }
 }
 
+@keyframes public-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ambient-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  50% {
+    transform: translate3d(10px, -12px, 0) rotate(2deg);
+  }
+}
+
+@keyframes success-glow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(47, 93, 39, 0.18);
+  }
+  100% {
+    box-shadow: 0 0 0 22px rgba(47, 93, 39, 0);
+  }
+}
+
 body {
   min-height: 100vh;
   min-height: 100dvh;
@@ -93,6 +123,73 @@ input[type="radio"] {
 
   .surface-muted {
     @apply rounded-lg border border-mango-100 bg-mango-50/70 shadow-crisp;
+  }
+
+  .public-page {
+    @apply relative overflow-hidden;
+  }
+
+  .public-ambient {
+    @apply pointer-events-none absolute inset-0 overflow-hidden;
+  }
+
+  .public-ambient::before,
+  .public-ambient::after {
+    content: "";
+    position: absolute;
+    border-radius: 9999px;
+    filter: blur(4px);
+    opacity: 0.72;
+    animation: ambient-drift 9s ease-in-out infinite;
+  }
+
+  .public-ambient::before {
+    width: 17rem;
+    height: 17rem;
+    left: -5rem;
+    top: 5rem;
+    background: radial-gradient(circle, rgba(245, 166, 35, 0.26), rgba(245, 166, 35, 0));
+  }
+
+  .public-ambient::after {
+    width: 21rem;
+    height: 21rem;
+    right: -8rem;
+    top: 1rem;
+    background: radial-gradient(circle, rgba(47, 93, 39, 0.18), rgba(47, 93, 39, 0));
+    animation-delay: -3s;
+  }
+
+  .premium-card {
+    @apply rounded-2xl border border-stone-200/80 bg-white/90 shadow-crisp;
+  }
+
+  .premium-panel {
+    @apply rounded-3xl border border-stone-200/80 bg-white/85 shadow-lift;
+  }
+
+  .seasonal-chip {
+    @apply inline-flex items-center gap-2 rounded-full border border-leaf-100 bg-white/80 px-3 py-1.5 text-xs font-black uppercase tracking-[0.18em] text-leaf-700 shadow-crisp;
+  }
+
+  .soft-divider {
+    @apply border-t border-stone-200/80;
+  }
+
+  .reveal-up {
+    animation: public-rise 520ms ease-out both;
+  }
+
+  .reveal-delay-1 {
+    animation-delay: 90ms;
+  }
+
+  .reveal-delay-2 {
+    animation-delay: 170ms;
+  }
+
+  .success-pulse {
+    animation: success-glow 1100ms ease-out 2;
   }
 
   .btn-primary {
@@ -223,5 +320,16 @@ input[type="radio"] {
   .wrap-anywhere {
     overflow-wrap: anywhere;
     word-break: break-word;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.001ms !important;
   }
 }

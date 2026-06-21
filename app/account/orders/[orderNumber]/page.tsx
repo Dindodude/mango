@@ -48,15 +48,15 @@ export default async function CustomerOrderPage({ params }: { params: Promise<{ 
     .filter(Boolean) as CartLine[];
 
   return (
-    <main>
+    <main className="public-page">
       <SiteHeader />
-      <div className="shell max-w-4xl py-8 sm:py-10">
+      <div className="shell max-w-4xl py-8 sm:py-12">
         <Link href="/account" className="text-sm font-bold text-leaf-700 hover:text-leaf-900">Back to my orders</Link>
-        <div className="mt-5 surface p-5 sm:p-6">
+        <div className="mt-5 premium-panel p-5 sm:p-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <p className="eyebrow">Order</p>
-              <h1 className="mt-2 text-3xl font-black text-stone-950">{order.order_number}</h1>
+              <h1 className="mt-2 text-4xl font-black text-stone-950">{order.order_number}</h1>
               <p className="mt-2 text-sm font-semibold text-stone-600">{customerOrderStatus(order.payment_status, order.order_status)}</p>
             </div>
             <p className="text-2xl font-black text-stone-950">{money(order.total_amount)}</p>
@@ -68,7 +68,7 @@ export default async function CustomerOrderPage({ params }: { params: Promise<{ 
 
           <div className="mt-6 space-y-3">
             {order.order_items?.map((item: any) => (
-              <div key={item.product_name_snapshot} className="flex items-start justify-between gap-4 rounded-md border border-stone-200 bg-stone-50 p-3 text-sm">
+              <div key={item.product_name_snapshot} className="flex items-start justify-between gap-4 rounded-2xl border border-stone-200 bg-stone-50 p-3 text-sm">
                 <div>
                   <p className="font-black text-stone-950">{item.product_name_snapshot}</p>
                   <p className="text-stone-600">Quantity: {item.quantity}</p>
@@ -86,7 +86,7 @@ export default async function CustomerOrderPage({ params }: { params: Promise<{ 
 
           <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <ReorderButton lines={reorderLines} />
-            <Link href="/preorder" className="btn-secondary">Continue shopping</Link>
+            <Link href="/preorder" className="btn-secondary rounded-full">Continue shopping</Link>
           </div>
         </div>
       </div>

@@ -30,8 +30,8 @@ function StatusMessage({ state }: { state: ActionState }) {
 function CustomerLoginForm() {
   const [state, formAction] = useActionState(loginCustomer, initialState);
   return (
-    <form action={formAction} className="surface space-y-4 p-5 sm:p-6">
-      <div className="flex h-11 w-11 items-center justify-center rounded-md bg-leaf-50 text-leaf-700">
+    <form action={formAction} className="premium-panel space-y-4 p-5 sm:p-6">
+      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-leaf-50 text-leaf-700">
         <LockKeyhole className="h-5 w-5" />
       </div>
       <div>
@@ -47,7 +47,7 @@ function CustomerLoginForm() {
         <input name="password" type="password" required minLength={6} className="field mt-1.5" placeholder="Your password" />
       </label>
       <StatusMessage state={state} />
-      <button type="submit" className="btn-primary w-full">Sign in</button>
+      <button type="submit" className="btn-primary w-full rounded-full">Sign in</button>
       <p className="text-center text-sm font-semibold text-stone-600">
         Need an account?{" "}
         <Link className="text-leaf-700 hover:text-leaf-900" href="/account/signup">
@@ -88,8 +88,8 @@ function CustomerSignupForm() {
   }
 
   return (
-    <div className="surface space-y-4 p-5 sm:p-6">
-      <div className="flex h-11 w-11 items-center justify-center rounded-md bg-leaf-50 text-leaf-700">
+    <div className="premium-panel space-y-4 p-5 sm:p-6">
+      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-leaf-50 text-leaf-700">
         {step === "details" ? <UserPlus className="h-5 w-5" /> : <MailCheck className="h-5 w-5" />}
       </div>
       <div>
@@ -116,7 +116,7 @@ function CustomerSignupForm() {
             />
           </label>
           <StatusMessage state={sendState} />
-          <button type="submit" disabled={pending} className="btn-primary w-full">{pending ? "Sending..." : "Send code"}</button>
+          <button type="submit" disabled={pending} className="btn-primary w-full rounded-full">{pending ? "Sending..." : "Send code"}</button>
         </form>
       )}
 
@@ -138,8 +138,8 @@ function CustomerSignupForm() {
             />
           </label>
           <StatusMessage state={verifyState} />
-          <button type="submit" disabled={pending} className="btn-primary w-full">{pending ? "Checking..." : "Verify code"}</button>
-          <button type="button" onClick={() => { setStep("email"); setSendState(initialState); setVerifyState(initialState); }} className="btn-secondary w-full">
+          <button type="submit" disabled={pending} className="btn-primary w-full rounded-full">{pending ? "Checking..." : "Verify code"}</button>
+          <button type="button" onClick={() => { setStep("email"); setSendState(initialState); setVerifyState(initialState); }} className="btn-secondary w-full rounded-full">
             Use a different email
           </button>
         </form>
@@ -165,7 +165,7 @@ function CustomerSignupForm() {
             <input name="password" type="password" required minLength={6} className="field mt-1.5" placeholder="At least 6 characters" />
           </label>
           <StatusMessage state={completeState} />
-          <button type="submit" className="btn-primary w-full">Create account</button>
+          <button type="submit" className="btn-primary w-full rounded-full">Create account</button>
         </form>
       )}
 

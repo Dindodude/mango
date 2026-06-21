@@ -8,7 +8,7 @@ const initialState: ActionState = { ok: false, message: "" };
 export function CustomerProfileForm({ fullName, phone }: { fullName?: string | null; phone?: string | null }) {
   const [state, formAction] = useActionState(saveCustomerProfile, initialState);
   return (
-    <form action={formAction} className="surface p-5">
+    <form action={formAction} className="premium-card p-5">
       <h2 className="font-black text-stone-950">Saved contact</h2>
       <p className="mt-1 text-sm leading-6 text-stone-600">Used to make checkout faster next time.</p>
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -26,7 +26,7 @@ export function CustomerProfileForm({ fullName, phone }: { fullName?: string | n
           {state.message}
         </p>
       )}
-      <button type="submit" className="btn-secondary mt-4">Save contact</button>
+      <button type="submit" className="btn-secondary mt-4 rounded-full">Save contact</button>
     </form>
   );
 }

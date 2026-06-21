@@ -15,18 +15,18 @@ export function AddToCart({ product }: Props) {
 
   return (
     <div className="mt-5 flex items-center gap-3">
-      <div className="flex h-11 items-center overflow-hidden rounded-md border border-stone-200 bg-white shadow-crisp">
-        <button type="button" className="grid h-full w-10 place-items-center text-stone-500 transition hover:bg-stone-50 hover:text-stone-950" onClick={() => setQuantity((value) => Math.max(1, value - 1))} aria-label="Decrease">
+      <div className="flex h-11 items-center overflow-hidden rounded-full border border-stone-200 bg-white shadow-crisp">
+        <button type="button" className="grid h-full w-11 place-items-center text-stone-500 transition hover:bg-stone-50 hover:text-stone-950 active:scale-95" onClick={() => setQuantity((value) => Math.max(1, value - 1))} aria-label="Decrease">
           <Minus className="h-4 w-4" />
         </button>
         <span className="w-11 text-center text-sm font-black">{quantity}</span>
-        <button type="button" className="grid h-full w-10 place-items-center text-stone-500 transition hover:bg-stone-50 hover:text-stone-950" onClick={() => setQuantity((value) => value + 1)} aria-label="Increase">
+        <button type="button" className="grid h-full w-11 place-items-center text-stone-500 transition hover:bg-stone-50 hover:text-stone-950 active:scale-95" onClick={() => setQuantity((value) => value + 1)} aria-label="Increase">
           <Plus className="h-4 w-4" />
         </button>
       </div>
       <button
         type="button"
-        className="btn-primary flex-1"
+        className="btn-primary flex-1 rounded-full"
         onClick={() => {
           cart.add({ productId: product.id, name: product.name, category: product.category, price: product.selling_price }, quantity);
           setAdded(true);

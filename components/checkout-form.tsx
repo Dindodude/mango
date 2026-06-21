@@ -37,12 +37,15 @@ export function CheckoutForm({ defaults, signedIn = false }: { defaults?: Checko
           event.preventDefault();
         }
       }}
-      className="surface space-y-5 p-5 sm:p-6"
+      className="premium-panel space-y-5 p-5 sm:p-6"
     >
       <input type="hidden" name="items" value={itemsPayload} />
       {signedIn && <p className="rounded-md border border-leaf-100 bg-leaf-50 p-3 text-sm font-bold text-leaf-700">Signed in. Your contact details are filled in.</p>}
-      <div className="rounded-lg border border-stone-200 bg-stone-50 p-4">
-        <h2 className="font-black text-stone-950">Contact</h2>
+      <div className="rounded-2xl border border-stone-200 bg-white p-4">
+        <div className="flex items-center gap-3">
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-leaf-700 text-sm font-black text-white">1</span>
+          <h2 className="font-black text-stone-950">Contact</h2>
+        </div>
         <p className="mt-1 text-sm text-stone-600">We use this to match your payment and order.</p>
         <div className="mt-4 grid gap-4">
           <div>
@@ -95,10 +98,13 @@ export function CheckoutForm({ defaults, signedIn = false }: { defaults?: Checko
           </div>
         </div>
       </div>
-      <div className="rounded-lg border border-mango-100 bg-mango-50 p-4 text-sm">
-        <h2 className="mb-3 font-black text-stone-950">Payment</h2>
+      <div className="rounded-2xl border border-mango-100 bg-mango-50 p-4 text-sm">
+        <div className="mb-3 flex items-center gap-3">
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-mango-500 text-sm font-black text-stone-950">2</span>
+          <h2 className="font-black text-stone-950">Payment</h2>
+        </div>
         <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-white text-leaf-700 shadow-crisp">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-leaf-700 shadow-crisp">
             <CreditCard className="h-5 w-5" />
           </div>
           <div>
@@ -112,9 +118,12 @@ export function CheckoutForm({ defaults, signedIn = false }: { defaults?: Checko
           <CopyButton label="Total" value={money(cart.total)} />
         </div>
       </div>
-      <div className="rounded-lg border border-stone-200 bg-white p-4">
-        <h2 className="font-black text-stone-950">Submit</h2>
-        <label className="mt-3 flex items-start gap-3 rounded-lg border border-stone-200 bg-stone-50 p-4 text-sm">
+      <div className="rounded-2xl border border-stone-200 bg-white p-4">
+        <div className="flex items-center gap-3">
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-stone-950 text-sm font-black text-white">3</span>
+          <h2 className="font-black text-stone-950">Submit</h2>
+        </div>
+        <label className="mt-3 flex items-start gap-3 rounded-2xl border border-stone-200 bg-stone-50 p-4 text-sm">
           <input
             name="confirmedPaid"
             type="checkbox"
@@ -130,7 +139,7 @@ export function CheckoutForm({ defaults, signedIn = false }: { defaults?: Checko
       <button
         type="submit"
         disabled={!cart.items.length || !confirmed || pending}
-        className="btn-primary w-full"
+        className="btn-primary w-full rounded-full"
       >
         <ShieldCheck className="h-4 w-4" />
         {pending ? "Submitting..." : "I Paid - Submit Preorder"}
