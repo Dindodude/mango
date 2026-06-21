@@ -79,7 +79,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           </div>
         </AdminPanel>
 
-          <div className="surface rounded-lg border border-leaf-100 bg-leaf-50 p-4 text-sm">
+          <div className="admin-card border-leaf-100 bg-leaf-50 p-4 text-sm">
             <div className="mb-3 flex items-center gap-2">
               <Mail className="h-4 w-4 text-leaf-700" />
               <h3 className="font-black text-stone-950">Email Status</h3>
@@ -102,7 +102,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
         </div>
 
         <aside className="order-first space-y-5 lg:sticky lg:top-20 lg:order-none lg:self-start">
-          <section className="surface p-5">
+          <section className="admin-card p-5">
             <div className="flex items-center justify-between">
               <h2 className="font-black text-stone-950">Next Action</h2>
               <CreditCard className="h-5 w-5 text-leaf-700" />
@@ -115,7 +115,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
             </div>
           </section>
 
-        <form action={updateOrder} className="surface p-5">
+        <form action={updateOrder} className="admin-card p-5">
           <input type="hidden" name="id" value={order.id} />
           <div className="flex items-center justify-between">
             <h2 className="font-black text-stone-950">Detailed Update</h2>
@@ -151,7 +151,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
 
 function FactCard({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="surface p-4">
+    <div className="admin-card p-4">
       <p className="text-xs font-black uppercase tracking-wide text-stone-500">{label}</p>
       <p className="mt-2 truncate font-black text-stone-950">{value}</p>
     </div>

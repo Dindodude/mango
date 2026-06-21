@@ -87,6 +87,10 @@ input[type="radio"] {
     @apply rounded-lg border border-stone-200/80 bg-white shadow-crisp;
   }
 
+  .admin-card {
+    @apply rounded-xl border border-stone-200/80 bg-white shadow-crisp;
+  }
+
   .surface-muted {
     @apply rounded-lg border border-mango-100 bg-mango-50/70 shadow-crisp;
   }
@@ -169,11 +173,11 @@ input[type="radio"] {
   }
 
   .admin-app-shell {
-    @apply min-h-screen bg-[#f7f5ee] lg:grid lg:grid-cols-[16rem_1fr];
+    @apply min-h-screen bg-[#f6f4ed] lg:grid lg:grid-cols-[17rem_1fr];
   }
 
   .admin-sidebar {
-    @apply fixed left-0 top-0 z-40 hidden h-screen w-64 flex-col border-r border-stone-200 bg-white/95 py-4 shadow-crisp lg:flex;
+    @apply fixed left-0 top-0 z-40 hidden h-screen w-[17rem] flex-col border-r border-white/10 bg-stone-950 py-4 shadow-crisp lg:flex;
   }
 
   .admin-main {
@@ -181,15 +185,19 @@ input[type="radio"] {
   }
 
   .admin-topbar {
-    @apply sticky top-0 z-30 flex min-h-16 items-center gap-3 border-b border-stone-200 bg-white px-4 py-3 shadow-crisp md:px-5;
+    @apply sticky top-0 z-30 flex min-h-16 items-center gap-3 border-b border-stone-200/80 bg-[#fbfaf6]/95 px-4 py-3 shadow-crisp md:px-5;
   }
 
   .admin-sidebar-link {
-    @apply flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 text-sm font-bold text-stone-700 transition hover:bg-leaf-50 hover:text-leaf-700;
+    @apply flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 text-sm font-bold text-stone-300 transition hover:bg-white/10 hover:text-white;
   }
 
   .admin-sidebar-link-active {
-    @apply bg-leaf-700 text-white shadow-crisp hover:bg-leaf-900 hover:text-white;
+    @apply bg-white text-stone-950 shadow-crisp hover:bg-white hover:text-stone-950;
+  }
+
+  .admin-sidebar-secondary {
+    @apply focus-ring inline-flex min-h-11 w-full items-center justify-start gap-2 rounded-xl border border-white/10 bg-white/10 px-4 py-2.5 text-sm font-bold text-white shadow-crisp transition hover:bg-white/20;
   }
 
   .admin-mobile-nav {

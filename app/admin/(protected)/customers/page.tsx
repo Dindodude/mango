@@ -55,7 +55,7 @@ export default async function AdminCustomersPage({ searchParams }: { searchParam
         <MetricCard label="Customer revenue" value={money(customers.reduce((sum: number, customer: any) => sum + customer.revenue, 0))} />
       </div>
 
-      <form className="surface mt-5 flex flex-col gap-3 p-4 sm:flex-row">
+      <form className="admin-card mt-5 flex flex-col gap-3 p-4 sm:flex-row">
         <label className="relative flex-1">
           <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-stone-400" />
           <input name="search" defaultValue={resolvedSearchParams.search ?? ""} placeholder="Search name, phone, or email" className="field pl-9" />
@@ -65,7 +65,7 @@ export default async function AdminCustomersPage({ searchParams }: { searchParam
 
       <div className="mt-5 grid gap-4">
         {customers.map((customer: any) => (
-          <section key={customer.key} className="surface overflow-hidden">
+          <section key={customer.key} className="admin-card overflow-hidden">
             <div className="grid gap-3 border-b border-stone-200 bg-stone-50 p-4 lg:grid-cols-[1fr_auto] lg:items-center">
               <div>
                 <div className="flex flex-wrap items-center gap-2">

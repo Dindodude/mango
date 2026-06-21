@@ -42,7 +42,7 @@ export function StatusBadge({ status }: { status: string }) {
 
 export function EmptyState({ title, body }: { title: string; body: string }) {
   return (
-    <div className="surface p-10 text-center">
+    <div className="admin-card p-10 text-center">
       <p className="text-lg font-black text-stone-950">{title}</p>
       <p className="mt-1 text-sm font-semibold text-stone-500">{body}</p>
     </div>
@@ -50,9 +50,9 @@ export function EmptyState({ title, body }: { title: string; body: string }) {
 }
 
 export function MetricCard({ label, value, tone = "default" }: { label: string; value: React.ReactNode; tone?: "default" | "good" | "warn" }) {
-  const classes = tone === "warn" ? "border-amber-200 bg-amber-50/70" : tone === "good" ? "border-leaf-100 bg-leaf-50/70" : "";
+  const classes = tone === "warn" ? "border-amber-200 bg-amber-50/80" : tone === "good" ? "border-leaf-100 bg-leaf-50/80" : "bg-white";
   return (
-    <div className={`surface p-4 ${classes}`}>
+    <div className={`admin-card p-4 ${classes}`}>
       <p className="text-xs font-black uppercase tracking-wide text-stone-500">{label}</p>
       <p className="mt-2 text-2xl font-black text-stone-950">{value}</p>
     </div>
@@ -74,7 +74,7 @@ export function WorkCard({
 }) {
   const toneClass = tone === "warn" ? "border-amber-200 bg-amber-50" : tone === "good" ? "border-leaf-100 bg-leaf-50" : "border-stone-200 bg-white";
   return (
-    <Link href={href} className={`rounded-lg border p-4 shadow-crisp transition hover:-translate-y-0.5 hover:shadow-lg ${toneClass}`}>
+    <Link href={href} className={`rounded-xl border p-4 shadow-crisp transition hover:-translate-y-0.5 hover:shadow-lg ${toneClass}`}>
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-xs font-black uppercase tracking-wide text-stone-500">{title}</p>
@@ -99,7 +99,7 @@ export function AdminPanel({
   action?: React.ReactNode;
 }) {
   return (
-    <section className="surface overflow-hidden">
+    <section className="admin-card overflow-hidden">
       <div className="flex flex-col gap-3 border-b border-stone-100 bg-white px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
         <div>
           <h2 className="font-black text-stone-950">{title}</h2>

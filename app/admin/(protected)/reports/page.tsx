@@ -1,5 +1,5 @@
 import { Download, LineChart, PackageSearch, Truck } from "lucide-react";
-import { AdminPageHeader, AdminPanel } from "@/components/admin-ui";
+import { AdminPageHeader, AdminPanel, MetricCard } from "@/components/admin-ui";
 import { CopyButton } from "@/components/copy-button";
 import { EmailTestForm } from "@/components/email-test-form";
 import { emailConfigStatus } from "@/lib/email";
@@ -25,6 +25,13 @@ export default async function ReportsPage() {
     acc[key].outstanding += order.payment_status === "Payment Verified" ? 0 : Number(order.total_amount);
     return acc;
   }, {}));
+  const outstandingOrders = (orders ?? []).filter((order: any) => order.payment_status !== "Payment Verified");
+  const reportTotals = {
+    revenue: (orders ?? []).reduce((sum: number, order: any) => sum + Number(order.total_amount), 0),
+    profit: (orders ?? []).reduce((sum: number, order: any) => sum + Number(order.total_profit), 0),
+    outstanding: outstandingOrders.reduce((sum: number, order: any) => sum + Number(order.total_amount), 0),
+    outstandingCount: outstandingOrders.length
+  };
 
   const supplier = Object.values((items ?? []).reduce<Record<string, any>>((acc, item) => {
     const key = `${item.orders?.batches?.batch_name ?? "No batch"}-${item.product_name_snapshot}`;
@@ -66,6 +73,15 @@ export default async function ReportsPage() {
           </>
         )}
       />
+
+      <div className="mt-5">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <MetricCard label="Total revenue" value={money(reportTotals.revenue)} />
+          <MetricCard label="Total profit" value={money(reportTotals.profit)} tone="good" />
+          <MetricCard label="Outstanding" value={money(reportTotals.outstanding)} tone={reportTotals.outstanding ? "warn" : "good"} />
+          <MetricCard label="Unpaid/problem orders" value={reportTotals.outstandingCount} tone={reportTotals.outstandingCount ? "warn" : "good"} />
+        </div>
+      </div>
 
       <div className="mt-5">
         <AdminPanel
@@ -121,12 +137,38 @@ export default async function ReportsPage() {
 
 function ReportTable({ icon, title, rows, columns }: { icon: React.ReactNode; title: string; rows: any[]; columns: string[] }) {
   return (
-    <section className="surface overflow-hidden">
+    <section className="admin-card overflow-hidden">
       <div className="flex items-center justify-between border-b border-stone-100 p-5">
         <h2 className="font-black text-stone-950">{title}</h2>
         {icon}
       </div>
-      <div className="overflow-x-auto">
+      <div className="grid gap-3 p-4 md:hidden">
+        {rows.map((row) => (
+          <article key={`${row.batch ?? ""}-${row.name}`} className="rounded-xl border border-stone-200 bg-stone-50 p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="font-black text-stone-950">{row.name ?? row.batch}</p>
+                {row.batch && <p className="text-xs font-bold text-stone-500">{row.batch}</p>}
+              </div>
+              {typeof row.quantity !== "undefined" && <span className="badge">{row.quantity}</span>}
+            </div>
+            <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
+              {columns
+                .filter((column) => column !== "name" && column !== "batch" && column !== "quantity")
+                .map((column) => (
+                  <div key={column} className="rounded-lg bg-white p-3">
+                    <dt className="text-[11px] font-black uppercase tracking-wide text-stone-500">{column}</dt>
+                    <dd className={column === "profit" ? "mt-1 font-black text-leaf-700" : "mt-1 font-black text-stone-950"}>
+                      {["revenue", "profit", "outstanding"].includes(column) ? money(row[column]) : row[column]}
+                    </dd>
+                  </div>
+                ))}
+            </dl>
+          </article>
+        ))}
+        {!rows.length && <p className="rounded-lg bg-stone-50 p-6 text-center font-semibold text-stone-500">No report data yet.</p>}
+      </div>
+      <div className="hidden overflow-x-auto md:block">
         <table className="data-table min-w-[620px]">
           <thead><tr>{columns.map((column) => <th key={column}>{column}</th>)}</tr></thead>
           <tbody>

@@ -43,7 +43,7 @@ export default async function BatchesPage() {
         {batches?.map((batch) => {
           const batchStats = stats(batch.id);
           return (
-            <details key={batch.id} className="surface group overflow-hidden" open={batch.status === "Active"}>
+            <details key={batch.id} className="admin-card group overflow-hidden" open={batch.status === "Active"}>
               <summary className="flex cursor-pointer list-none flex-col gap-4 p-5 xl:flex-row xl:items-center xl:justify-between">
                 <div>
                   <div className="flex flex-wrap items-center gap-2">

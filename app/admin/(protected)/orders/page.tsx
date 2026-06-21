@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Download, Filter, Search } from "lucide-react";
 import { AdminOrderActions } from "@/components/admin-order-actions";
-import { AdminPageHeader, EmptyState, StatusBadge } from "@/components/admin-ui";
+import { AdminPageHeader, EmptyState, MetricCard, StatusBadge } from "@/components/admin-ui";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { money } from "@/lib/utils";
 
@@ -39,6 +39,12 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
     const haystack = `${order.customer_name} ${order.phone} ${order.customer_email ?? ""} ${order.order_number}`.toLowerCase();
     return haystack.includes(search.toLowerCase()) && quickFilter(order, quick);
   });
+  const orderCounts = {
+    needsPayment: filtered.filter((order) => order.payment_status === "Payment Claimed by Customer" || order.payment_status === "Payment Issue").length,
+    paid: filtered.filter((order) => order.payment_status === "Payment Verified").length,
+    ready: filtered.filter((order) => order.order_status === "Ready for Pickup").length,
+    problem: filtered.filter((order) => order.payment_status !== "Payment Verified" || order.order_status === "Submitted").length
+  };
   const groupedOrders = Object.values(
     filtered.reduce<Record<string, any>>((acc, order) => {
       const batchName = order.batches?.batch_name ?? "No batch";
@@ -81,7 +87,14 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
         ))}
       </div>
 
-      <form className="surface mt-4 grid gap-3 p-4 md:grid-cols-[1.4fr_1fr_1fr_1fr_0.8fr_auto]">
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <MetricCard label="Needs payment" value={orderCounts.needsPayment} tone={orderCounts.needsPayment ? "warn" : "good"} />
+        <MetricCard label="Verified paid" value={orderCounts.paid} tone="good" />
+        <MetricCard label="Ready pickup" value={orderCounts.ready} />
+        <MetricCard label="Problem/order review" value={orderCounts.problem} tone={orderCounts.problem ? "warn" : "good"} />
+      </div>
+
+      <form className="admin-card mt-4 grid gap-3 p-4 md:grid-cols-[1.4fr_1fr_1fr_1fr_0.8fr_auto]">
         <label className="relative">
           <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-stone-400" />
           <input name="search" defaultValue={search} placeholder="Name, phone, email, order number" className="field pl-9" />
@@ -114,7 +127,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
 
       <div className="mt-5 space-y-5">
         {groupedOrders.map((group: any) => (
-          <section key={group.batchName} className="overflow-hidden rounded-lg border border-stone-200 bg-white shadow-crisp">
+          <section key={group.batchName} className="admin-card overflow-hidden">
             <div className="flex flex-col gap-3 border-b border-stone-200 bg-stone-50 px-4 py-4 xl:flex-row xl:items-center xl:justify-between">
               <div>
                 <h2 className="text-lg font-black text-stone-950">{group.batchName}</h2>

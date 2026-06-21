@@ -26,7 +26,7 @@ export default async function ProductsPage() {
 
       <div className="mt-5 space-y-3">
         {products?.map((product) => (
-          <details key={product.id} className="surface group overflow-hidden">
+          <details key={product.id} className="admin-card group overflow-hidden">
             <summary className="flex cursor-pointer list-none flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
@@ -35,7 +35,7 @@ export default async function ProductsPage() {
                 </div>
                 <p className="mt-1 text-sm font-semibold text-stone-500">{product.category}</p>
               </div>
-              <div className="grid grid-cols-4 gap-2 text-right text-sm sm:min-w-[460px]">
+              <div className="grid grid-cols-2 gap-2 text-right text-sm sm:min-w-[460px] sm:grid-cols-4">
                 <MiniStat label="Order" value={product.display_order ?? 0} />
                 <MiniStat label="Sell" value={money(product.selling_price)} />
                 <MiniStat label="Cost" value={money(product.cost_price)} />

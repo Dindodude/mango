@@ -9,7 +9,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const supabase = createAdminClient();
   const { data: activeBatch } = await supabase
     .from("batches")
-    .select("id,batch_name")
+    .select("id,batch_name,cutoff_date,expected_arrival_date")
     .eq("status", "Active")
     .maybeSingle();
   let attentionQuery = supabase
@@ -22,7 +22,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <main className="min-h-screen bg-[#f7f5ee]">
-      <AdminShell role={admin.role} activeBatchName={activeBatch?.batch_name} attentionCount={attentionCount ?? 0}>
+      <AdminShell
+        role={admin.role}
+        activeBatchName={activeBatch?.batch_name}
+        activeBatchCutoff={activeBatch?.cutoff_date}
+        activeBatchArrival={activeBatch?.expected_arrival_date}
+        attentionCount={attentionCount ?? 0}
+      >
       {children}
       </AdminShell>
     </main>

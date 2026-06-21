@@ -29,6 +29,13 @@ export default async function AdminDashboardPage() {
     }),
     { revenue: 0, profit: 0, outstanding: 0 }
   );
+  const pipeline = [
+    { label: "Submitted", href: "/admin/orders?status=Submitted", count: activeOrders.filter((order) => order.order_status === "Submitted").length },
+    { label: "Confirmed", href: "/admin/orders?status=Confirmed", count: activeOrders.filter((order) => order.order_status === "Confirmed").length },
+    { label: "Ready", href: "/admin/orders?quick=ready", count: ready.length },
+    { label: "Completed", href: "/admin/orders?quick=completed", count: activeOrders.filter((order) => order.order_status === "Completed").length }
+  ];
+  const pipelineMax = Math.max(...pipeline.map((item) => item.count), 1);
 
   const supplierSummary = Object.values(
     (items ?? [])
@@ -78,6 +85,50 @@ export default async function AdminDashboardPage() {
         <MetricCard label="Revenue" value={money(totals.revenue)} />
         <MetricCard label="Profit" value={money(totals.profit)} tone="good" />
         <MetricCard label="All open orders" value={allOrders.length} />
+      </div>
+
+      <div className="mt-6 grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
+        <AdminPanel
+          title="Status Pipeline"
+          description="A fast read on where the active batch is sitting right now."
+          action={<ClipboardList className="h-5 w-5 text-leaf-700" />}
+        >
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {pipeline.map((item) => (
+              <Link key={item.label} href={item.href} className="rounded-xl border border-stone-200 bg-stone-50 p-4 transition hover:border-leaf-100 hover:bg-leaf-50">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="font-black text-stone-950">{item.label}</p>
+                  <span className="badge">{item.count}</span>
+                </div>
+                <div className="mt-4 h-2 rounded-full bg-white">
+                  <div className="h-2 rounded-full bg-leaf-700" style={{ width: `${Math.max(8, (item.count / pipelineMax) * 100)}%` }} />
+                </div>
+              </Link>
+            ))}
+          </div>
+        </AdminPanel>
+
+        <AdminPanel
+          title="Active Batch Snapshot"
+          description={activeBatch ? "Customer-facing window and internal totals." : "Create or activate a batch before customers can preorder."}
+          action={activeBatch ? <span className="badge-good">Active</span> : <span className="badge-warm">Closed</span>}
+        >
+          {activeBatch ? (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-xl border border-stone-200 bg-stone-50 p-4">
+                <p className="text-xs font-black uppercase tracking-wide text-stone-500">Cutoff</p>
+                <p className="mt-2 font-black text-stone-950">{formatDate(activeBatch.cutoff_date)}</p>
+              </div>
+              <div className="rounded-xl border border-stone-200 bg-stone-50 p-4">
+                <p className="text-xs font-black uppercase tracking-wide text-stone-500">Expected arrival</p>
+                <p className="mt-2 font-black text-stone-950">{formatDate(activeBatch.expected_arrival_date)}</p>
+              </div>
+              <Link href="/admin/batches" className="btn-secondary sm:col-span-2">Manage batches</Link>
+            </div>
+          ) : (
+            <Link href="/admin/batches" className="btn-primary w-full">Open batch tools</Link>
+          )}
+        </AdminPanel>
       </div>
 
       <div className="mt-6 grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
@@ -167,40 +218,32 @@ export default async function AdminDashboardPage() {
 
         <AdminPanel title="Fast Links" description="Common admin work without digging through menus.">
           <div className="grid gap-3 sm:grid-cols-2">
-            <Link href="/admin/orders?quick=ready" className="surface p-4 font-black text-stone-950 transition hover:border-leaf-100 hover:bg-leaf-50">
+            <Link href="/admin/orders?quick=ready" className="admin-card p-4 font-black text-stone-950 transition hover:border-leaf-100 hover:bg-leaf-50">
               Ready for pickup
               <ClipboardList className="mt-3 h-5 w-5 text-leaf-700" />
             </Link>
-            <Link href="/admin/batches" className="surface p-4 font-black text-stone-950 transition hover:border-leaf-100 hover:bg-leaf-50">
+            <Link href="/admin/batches" className="admin-card p-4 font-black text-stone-950 transition hover:border-leaf-100 hover:bg-leaf-50">
               Batch tools
               <ClipboardList className="mt-3 h-5 w-5 text-leaf-700" />
             </Link>
-            <Link href="/admin/products" className="surface p-4 font-black text-stone-950 transition hover:border-leaf-100 hover:bg-leaf-50">
+            <Link href="/admin/products" className="admin-card p-4 font-black text-stone-950 transition hover:border-leaf-100 hover:bg-leaf-50">
               Products
               <ClipboardList className="mt-3 h-5 w-5 text-leaf-700" />
             </Link>
-            <Link href="/admin/customers" className="surface p-4 font-black text-stone-950 transition hover:border-leaf-100 hover:bg-leaf-50">
+            <Link href="/admin/customers" className="admin-card p-4 font-black text-stone-950 transition hover:border-leaf-100 hover:bg-leaf-50">
               Customers
               <ClipboardList className="mt-3 h-5 w-5 text-leaf-700" />
             </Link>
           </div>
         </AdminPanel>
       </div>
-
-      <div className="mt-6 hidden gap-3 sm:grid-cols-3">
-        <Link href="/admin/orders?quick=ready" className="surface p-4 font-black text-stone-950 transition hover:border-leaf-100 hover:bg-leaf-50">
-          Ready for pickup
-          <ClipboardList className="mt-3 h-5 w-5 text-leaf-700" />
-        </Link>
-        <Link href="/admin/batches" className="surface p-4 font-black text-stone-950 transition hover:border-leaf-100 hover:bg-leaf-50">
-          Batch tools
-          <ClipboardList className="mt-3 h-5 w-5 text-leaf-700" />
-        </Link>
-        <Link href="/admin/reports" className="surface p-4 font-black text-stone-950 transition hover:border-leaf-100 hover:bg-leaf-50">
-          Reports
-          <ClipboardList className="mt-3 h-5 w-5 text-leaf-700" />
-        </Link>
-      </div>
     </div>
   );
+}
+
+function formatDate(value: string | null) {
+  if (!value) return "Not set";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
