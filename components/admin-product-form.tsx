@@ -34,6 +34,13 @@ export function AdminProductForm({ product }: { product?: any }) {
         <span className="label mb-1.5 block">Cost price</span>
         <input name="cost_price" type="number" step="0.01" defaultValue={product?.cost_price ?? ""} placeholder="23" required className="field" />
       </label>
+      <label>
+        <span className="label mb-1.5 block">Display order</span>
+        <input name="display_order" type="number" min="0" step="1" defaultValue={product?.display_order ?? 0} placeholder="0" className="field" />
+      </label>
+      <div className="flex items-center rounded-md bg-stone-50 px-3 py-2 text-sm font-bold text-stone-600">
+        Lower numbers show first.
+      </div>
       <label className="sm:col-span-2">
         <span className="label mb-1.5 block">Description</span>
         <textarea name="description" defaultValue={product?.description ?? ""} placeholder="Optional customer-facing description" className="field" />

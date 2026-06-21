@@ -40,7 +40,7 @@ export function CheckoutForm({ defaults, signedIn = false }: { defaults?: Checko
       className="surface space-y-5 p-5 sm:p-6"
     >
       <input type="hidden" name="items" value={itemsPayload} />
-      {signedIn && <p className="rounded-md border border-leaf-100 bg-leaf-50 p-3 text-sm font-bold text-leaf-800">Signed in. Your contact details are filled in.</p>}
+      {signedIn && <p className="rounded-md border border-leaf-100 bg-leaf-50 p-3 text-sm font-bold text-leaf-700">Signed in. Your contact details are filled in.</p>}
       <div className="rounded-lg border border-stone-200 bg-stone-50 p-4">
         <h2 className="font-black text-stone-950">Contact</h2>
         <p className="mt-1 text-sm text-stone-600">We use this to match your payment and order.</p>

@@ -20,6 +20,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
 
   if (!order) return <div className="admin-shell">Order not found.</div>;
   const message = `Hi ${order.customer_name}, we received your preorder #${order.order_number}. Payment is verified and your order is confirmed. Pickup location: ${PICKUP_ADDRESS}.`;
+  const pickupMessage = `Hi ${order.customer_name}, your preorder #${order.order_number} is ready for pickup. Pickup location: ${PICKUP_ADDRESS}. Total paid: ${money(order.total_amount)}.`;
 
   return (
     <div className="admin-shell max-w-6xl">
@@ -40,6 +41,13 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           <StatusBadge status={order.payment_status} />
           <StatusBadge status={order.order_status} />
         </div>
+      </div>
+
+      <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <FactCard label="Total" value={money(order.total_amount)} />
+        <FactCard label="Phone" value={order.phone} />
+        <FactCard label="Payment" value={order.payment_status} />
+        <FactCard label="Status" value={order.order_status} />
       </div>
 
       <div className="mt-6 grid gap-5 lg:grid-cols-[1fr_380px]">
@@ -83,16 +91,17 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           <div className="mt-5">
             <div className="mb-2 flex items-center gap-2">
               <Copy className="h-4 w-4 text-leaf-700" />
-              <h3 className="font-black text-stone-950">Confirmation Message</h3>
+              <h3 className="font-black text-stone-950">Customer Messages</h3>
             </div>
             <textarea readOnly value={message} className="field h-28 bg-mango-50" />
-            <div className="mt-2">
+            <div className="mt-2 grid gap-2 sm:grid-cols-2">
               <CopyButton label="Copy confirmation" value={message} />
+              <CopyButton label="Copy pickup message" value={pickupMessage} />
             </div>
           </div>
         </div>
 
-        <aside className="space-y-5 lg:sticky lg:top-28 lg:self-start">
+        <aside className="order-first space-y-5 lg:sticky lg:top-20 lg:order-none lg:self-start">
           <section className="surface p-5">
             <div className="flex items-center justify-between">
               <h2 className="font-black text-stone-950">Next Action</h2>
@@ -136,6 +145,15 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
         </form>
         </aside>
       </div>
+    </div>
+  );
+}
+
+function FactCard({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="surface p-4">
+      <p className="text-xs font-black uppercase tracking-wide text-stone-500">{label}</p>
+      <p className="mt-2 truncate font-black text-stone-950">{value}</p>
     </div>
   );
 }

@@ -43,6 +43,7 @@ const productSchema = z.object({
   category: z.string().min(2).max(60),
   selling_price: z.coerce.number().min(0),
   cost_price: z.coerce.number().min(0),
+  display_order: z.coerce.number().int().min(0).default(0),
   active: z.coerce.boolean().default(false)
 });
 
@@ -644,6 +645,7 @@ export async function saveProduct(_: AdminActionState, formData: FormData): Prom
       category: formData.get("category"),
       selling_price: formData.get("selling_price"),
       cost_price: formData.get("cost_price"),
+      display_order: formData.get("display_order"),
       active: formData.get("active") === "on"
     });
 

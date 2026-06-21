@@ -20,14 +20,24 @@ export default async function BatchesPage() {
       profit: batchOrders.reduce((sum, order) => sum + Number(order.total_profit), 0)
     };
   }
+  const activeBatch = batches?.find((batch) => batch.status === "Active");
 
   return (
     <div className="admin-shell">
       <AdminPageHeader eyebrow="Preorder windows" title="Batches" description="Only one batch can be active at a time. Arrival date can be written like June 15 2026." />
 
+      <div className={activeBatch ? "mt-5 rounded-lg border border-leaf-100 bg-leaf-50 p-4" : "mt-5 rounded-lg border border-amber-200 bg-amber-50 p-4"}>
+        <p className="text-xs font-black uppercase tracking-wide text-stone-500">Customer ordering window</p>
+        <p className="mt-1 font-black text-stone-950">
+          {activeBatch ? `Customers are currently ordering from ${activeBatch.batch_name}.` : "No active batch. Customers will see preorders closed until one batch is set to Active."}
+        </p>
+      </div>
+
+      <div className="mt-5">
       <AdminPanel title="Create Batch" description="Create the next preorder window from one arrival date." action={<CalendarPlus className="h-5 w-5 text-leaf-700" />}>
         <AdminBatchForm />
       </AdminPanel>
+      </div>
 
       <div className="mt-5 space-y-4">
         {batches?.map((batch) => {

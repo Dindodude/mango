@@ -20,7 +20,12 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
   const search = resolvedSearchParams.search ?? "";
   const payment = resolvedSearchParams.payment ?? "";
   const status = resolvedSearchParams.status ?? "";
+  const batch = resolvedSearchParams.batch ?? "";
   const quick = resolvedSearchParams.quick ?? "";
+  const { data: batches } = await supabase
+    .from("batches")
+    .select("id,batch_name,batch_code,status")
+    .order("created_at", { ascending: false });
   let query = supabase
     .from("orders")
     .select("*,batches(id,batch_name,batch_code),order_items(product_name_snapshot,quantity)")
@@ -28,6 +33,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
     .order("created_at", { ascending: resolvedSearchParams.sort === "oldest" });
   if (payment) query = query.eq("payment_status", payment);
   if (status) query = query.eq("order_status", status);
+  if (batch) query = query.eq("batch_id", batch);
   const { data: orders } = await query;
   const filtered = (orders ?? []).filter((order) => {
     const haystack = `${order.customer_name} ${order.phone} ${order.customer_email ?? ""} ${order.order_number}`.toLowerCase();
@@ -75,11 +81,19 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
         ))}
       </div>
 
-      <form className="surface mt-4 grid gap-3 p-4 md:grid-cols-[1.4fr_1fr_1fr_0.8fr_auto]">
+      <form className="surface mt-4 grid gap-3 p-4 md:grid-cols-[1.4fr_1fr_1fr_1fr_0.8fr_auto]">
         <label className="relative">
           <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-stone-400" />
           <input name="search" defaultValue={search} placeholder="Name, phone, email, order number" className="field pl-9" />
         </label>
+        <select name="batch" defaultValue={batch} className="field">
+          <option value="">All batches</option>
+          {(batches ?? []).map((item) => (
+            <option key={item.id} value={item.id}>
+              {item.status === "Active" ? "Active - " : ""}{item.batch_name}
+            </option>
+          ))}
+        </select>
         <select name="payment" defaultValue={payment} className="field">
           <option value="">All payment</option>
           {["Awaiting Payment", "Payment Claimed by Customer", "Payment Verified", "Payment Issue", "Refunded"].map((item) => <option key={item}>{item}</option>)}

@@ -46,7 +46,7 @@ export default async function AdminDashboardPage() {
   return (
     <div className="admin-shell">
       <AdminPageHeader
-        eyebrow="Today’s work"
+        eyebrow="Today's work"
         title="Admin Command Center"
         description={activeBatch ? `Active batch: ${activeBatch.batch_name}` : "No active batch. Create or activate one before taking preorders."}
         action={(

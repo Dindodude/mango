@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Search, UsersRound } from "lucide-react";
+import { ArrowUpRight, Search, UsersRound } from "lucide-react";
 import { AdminPageHeader, EmptyState, MetricCard, StatusBadge } from "@/components/admin-ui";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { money } from "@/lib/utils";
@@ -9,11 +9,18 @@ export const dynamic = "force-dynamic";
 export default async function AdminCustomersPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const resolvedSearchParams = await searchParams;
   const search = (resolvedSearchParams.search ?? "").toLowerCase();
-  const { data: orders } = await createAdminClient()
-    .from("orders")
-    .select("id,order_number,customer_name,customer_email,phone,total_amount,total_profit,payment_status,order_status,created_at")
-    .neq("order_status", "Cancelled")
-    .order("created_at", { ascending: false });
+  const supabase = createAdminClient();
+  const [{ data: orders }, { data: profiles }] = await Promise.all([
+    supabase
+      .from("orders")
+      .select("id,order_number,customer_name,customer_email,phone,total_amount,total_profit,payment_status,order_status,created_at")
+      .neq("order_status", "Cancelled")
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("customer_profiles")
+      .select("email,full_name,phone,email_verified_at")
+  ]);
+  const profileByEmail = new Map((profiles ?? []).map((profile) => [String(profile.email).toLowerCase(), profile]));
 
   const customers = Object.values((orders ?? []).reduce<Record<string, any>>((acc, order) => {
     const key = String(order.customer_email || order.phone || order.customer_name).toLowerCase();
@@ -26,6 +33,7 @@ export default async function AdminCustomersPage({ searchParams }: { searchParam
       revenue: 0,
       profit: 0
     };
+    acc[key].profile = order.customer_email ? profileByEmail.get(String(order.customer_email).toLowerCase()) : null;
     acc[key].orders.push(order);
     acc[key].revenue += Number(order.total_amount);
     acc[key].profit += Number(order.total_profit);
@@ -60,11 +68,14 @@ export default async function AdminCustomersPage({ searchParams }: { searchParam
           <section key={customer.key} className="surface overflow-hidden">
             <div className="grid gap-3 border-b border-stone-200 bg-stone-50 p-4 lg:grid-cols-[1fr_auto] lg:items-center">
               <div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <UsersRound className="h-5 w-5 text-leaf-700" />
                   <h2 className="font-black text-stone-950">{customer.name}</h2>
+                  {customer.orders.length > 1 && <span className="badge-good">Repeat</span>}
+                  {customer.profile?.email_verified_at && <span className="badge">Account</span>}
                 </div>
                 <p className="mt-1 text-sm font-semibold text-stone-600">{customer.email || "No email"} - {customer.phone}</p>
+                {customer.profile && <p className="mt-1 text-xs font-bold text-stone-500">Profile: {customer.profile.full_name || customer.name} - {customer.profile.phone || customer.phone}</p>}
               </div>
               <div className="grid grid-cols-3 gap-2 text-center text-sm">
                 <MiniStat label="Orders" value={customer.orders.length} />
@@ -72,6 +83,14 @@ export default async function AdminCustomersPage({ searchParams }: { searchParam
                 <MiniStat label="Profit" value={money(customer.profit)} />
               </div>
             </div>
+            {customer.orders[0] && (
+              <div className="border-b border-stone-100 bg-white px-4 py-3">
+                <Link href={`/admin/orders/${customer.orders[0].id}`} className="btn-secondary w-full sm:w-auto">
+                  Open latest order
+                  <ArrowUpRight className="h-4 w-4" />
+                </Link>
+              </div>
+            )}
             <div className="divide-y divide-stone-100">
               {customer.orders.slice(0, 6).map((order: any) => (
                 <Link key={order.id} href={`/admin/orders/${order.id}`} className="grid gap-2 p-4 text-sm transition hover:bg-leaf-50 md:grid-cols-[1fr_1fr_auto_auto] md:items-center">

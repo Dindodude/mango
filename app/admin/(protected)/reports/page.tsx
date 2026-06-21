@@ -56,7 +56,13 @@ export default async function ReportsPage() {
               <Download className="h-4 w-4" /> {type}
             </a>
           ))}
-          {activeBatch && <a href={`/api/admin/export/supplier?batchId=${activeBatch.id}`} className="btn-primary min-h-10 px-3 py-2"><Truck className="h-4 w-4" /> Supplier CSV</a>}
+          {activeBatch && (
+            <>
+              <a href={`/api/admin/export/supplier?batchId=${activeBatch.id}`} className="btn-primary min-h-10 px-3 py-2"><Truck className="h-4 w-4" /> Supplier CSV</a>
+              <a href={`/api/admin/export/pickup?batchId=${activeBatch.id}`} className="btn-secondary min-h-10 px-3 py-2"><Download className="h-4 w-4" /> Pickup CSV</a>
+              <a href={`/api/admin/export/problem?batchId=${activeBatch.id}`} className="btn-secondary min-h-10 px-3 py-2"><Download className="h-4 w-4" /> Problems</a>
+            </>
+          )}
           </>
         )}
       />

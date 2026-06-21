@@ -35,7 +35,8 @@ export default async function ProductsPage() {
                 </div>
                 <p className="mt-1 text-sm font-semibold text-stone-500">{product.category}</p>
               </div>
-              <div className="grid grid-cols-3 gap-2 text-right text-sm sm:min-w-[360px]">
+              <div className="grid grid-cols-4 gap-2 text-right text-sm sm:min-w-[460px]">
+                <MiniStat label="Order" value={product.display_order ?? 0} />
                 <MiniStat label="Sell" value={money(product.selling_price)} />
                 <MiniStat label="Cost" value={money(product.cost_price)} />
                 <MiniStat label="Profit" value={money(Number(product.selling_price) - Number(product.cost_price))} good />

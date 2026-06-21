@@ -80,7 +80,7 @@ input[type="radio"] {
   }
 
   .admin-shell {
-    @apply mx-auto w-full max-w-7xl px-4 pb-24 pt-5 sm:px-6 sm:pb-8 lg:px-8;
+    @apply mx-auto w-full max-w-7xl px-4 pb-28 pt-5 sm:px-6 sm:pb-8 lg:px-8;
   }
 
   .surface {
@@ -165,6 +165,42 @@ input[type="radio"] {
   }
 
   .admin-nav-link-active {
+    @apply bg-leaf-700 text-white shadow-crisp hover:bg-leaf-900 hover:text-white;
+  }
+
+  .admin-app-shell {
+    @apply min-h-screen bg-[#f7f5ee] lg:grid lg:grid-cols-[16rem_1fr];
+  }
+
+  .admin-sidebar {
+    @apply fixed left-0 top-0 z-40 hidden h-screen w-64 flex-col border-r border-stone-200 bg-white/95 py-4 shadow-crisp lg:flex;
+  }
+
+  .admin-main {
+    @apply min-w-0 lg:col-start-2;
+  }
+
+  .admin-topbar {
+    @apply sticky top-0 z-30 flex min-h-16 items-center gap-3 border-b border-stone-200 bg-white px-4 py-3 shadow-crisp md:px-5;
+  }
+
+  .admin-sidebar-link {
+    @apply flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 text-sm font-bold text-stone-700 transition hover:bg-leaf-50 hover:text-leaf-700;
+  }
+
+  .admin-sidebar-link-active {
+    @apply bg-leaf-700 text-white shadow-crisp hover:bg-leaf-900 hover:text-white;
+  }
+
+  .admin-mobile-nav {
+    @apply fixed bottom-0 left-0 right-0 z-50 flex gap-1 overflow-x-auto border-t border-stone-200 bg-white px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-lg lg:hidden;
+  }
+
+  .admin-mobile-nav-item {
+    @apply flex min-h-14 min-w-[4.8rem] shrink-0 flex-col items-center justify-center gap-1 rounded-lg text-[11px] font-black text-stone-600 transition hover:bg-leaf-50 hover:text-leaf-700;
+  }
+
+  .admin-mobile-nav-item-active {
     @apply bg-leaf-700 text-white shadow-crisp hover:bg-leaf-900 hover:text-white;
   }
 
